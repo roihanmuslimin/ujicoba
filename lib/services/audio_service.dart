@@ -1,178 +1,137 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:dio/dio.dart';
+import 'dart:typed_data';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 
-enum AudioState { stopped, playing, paused, loading, error }
+enum PlayState { stopped, playing, paused, loading, error }
 
 class AudioService {
   final AudioPlayer _player = AudioPlayer();
-  final Dio _dio = Dio();
-  AudioState _state = AudioState.stopped;
-  String? _currentUrl;
+  PlayState _state = PlayState.stopped;
   double _progress = 0;
   Duration _duration = Duration.zero;
-  StreamSubscription? _positionSub;
+  StreamSubscription? _posSub;
   StreamSubscription? _stateSub;
-  StreamSubscription? _durationSub;
+  StreamSubscription? _durSub;
 
-  AudioState get state => _state;
+  PlayState get state => _state;
   double get progress => _progress;
   Duration get duration => _duration;
-  String? get currentUrl => _currentUrl;
-  bool get isPlaying => _player.playing;
 
-  final StreamController<AudioState> _stateController = StreamController<AudioState>.broadcast();
-  final StreamController<double> _progressController = StreamController<double>.broadcast();
+  final StreamController<PlayState> _stateCtrl = StreamController<PlayState>.broadcast();
+  final StreamController<double> _progressCtrl = StreamController<double>.broadcast();
 
-  Stream<AudioState> get stateStream => _stateController.stream;
-  Stream<double> get progressStream => _progressController.stream;
+  Stream<PlayState> get stateStream => _stateCtrl.stream;
+  Stream<double> get progressStream => _progressCtrl.stream;
 
   AudioService() {
-    _positionSub = _player.positionStream.listen((pos) {
+    _posSub = _player.positionStream.listen((pos) {
       if (_duration.inMilliseconds > 0) {
         _progress = pos.inMilliseconds / _duration.inMilliseconds;
-        _progressController.add(_progress);
+        _progressCtrl.add(_progress);
       }
     });
-    _stateSub = _player.playerStateStream.listen((playerState) {
-      if (playerState.processingState == ProcessingState.completed) {
-        _setState(AudioState.stopped);
+    _stateSub = _player.playerStateStream.listen((ps) {
+      if (ps.processingState == ProcessingState.completed) {
+        _setState(PlayState.stopped);
       }
     });
-    _durationSub = _player.durationStream.listen((dur) {
-      if (dur != null) _duration = dur;
+    _durSub = _player.durationStream.listen((d) {
+      if (d != null) _duration = d;
     });
   }
 
-  void _setState(AudioState newState) {
-    _state = newState;
-    _stateController.add(newState);
+  void _setState(PlayState s) {
+    _state = s;
+    _stateCtrl.add(s);
   }
 
-  Future<void> playUrl(String url) async {
+  Future<void> play(String url) async {
     try {
-      _setState(AudioState.loading);
-      _currentUrl = url;
+      _setState(PlayState.loading);
       await _player.setUrl(url);
       await _player.play();
-      _setState(AudioState.playing);
+      _setState(PlayState.playing);
     } catch (e) {
-      _setState(AudioState.error);
+      _setState(PlayState.error);
     }
   }
 
-  Future<void> playLocal(String filePath) async {
+  Future<void> playLocal(String path) async {
     try {
-      _setState(AudioState.loading);
-      _currentUrl = filePath;
-      await _player.setFilePath(filePath);
+      _setState(PlayState.loading);
+      await _player.setFilePath(path);
       await _player.play();
-      _setState(AudioState.playing);
+      _setState(PlayState.playing);
     } catch (e) {
-      _setState(AudioState.error);
+      _setState(PlayState.error);
     }
   }
 
   Future<void> pause() async {
     await _player.pause();
-    _setState(AudioState.paused);
-  }
-
-  Future<void> resume() async {
-    await _player.play();
-    _setState(AudioState.playing);
+    _setState(PlayState.paused);
   }
 
   Future<void> stop() async {
     await _player.stop();
-    _setState(AudioState.stopped);
+    _setState(PlayState.stopped);
     _progress = 0;
-    _progressController.add(0);
+    _progressCtrl.add(0);
   }
 
-  Future<void> seek(Duration position) async {
-    await _player.seek(position);
-  }
-
-  Future<String?> downloadAudio(String url, String fileName) async {
+  Future<String?> download(String url, String fileName) async {
     try {
-      bool granted = await _requestStoragePermission();
-      if (!granted) return null;
+      final dir = await getApplicationDocumentsDirectory();
+      final saveDir = Directory('${dir.path}/quran_audio');
+      if (!await saveDir.exists()) await saveDir.create(recursive: true);
 
-      Directory? dir;
-      if (Platform.isAndroid) {
-        dir = await getExternalStorageDirectory();
-      } else {
-        dir = await getApplicationDocumentsDirectory();
-      }
-
-      if (dir == null) return null;
-
-      String savePath = '${dir.path}/quran_audio';
-      await Directory(savePath).create(recursive: true);
-
-      String filePath = '$savePath/$fileName.mp3';
-      File file = File(filePath);
-
+      final filePath = '${saveDir.path}/$fileName.mp3';
+      final file = File(filePath);
       if (await file.exists()) return filePath;
 
-      await _dio.download(url, filePath);
+      final response = await httpGet(Uri.parse(url));
+      await file.writeAsBytes(response);
       return filePath;
     } catch (e) {
       return null;
     }
   }
 
-  Future<bool> isDownloaded(String fileName) async {
-    Directory? dir;
-    if (Platform.isAndroid) {
-      dir = await getExternalStorageDirectory();
-    } else {
-      dir = await getApplicationDocumentsDirectory();
+  Future<Uint8List> httpGet(Uri uri) async {
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(uri);
+      final response = await request.close();
+      final bytes = await response.fold<Uint8List>(
+        Uint8List(0),
+        (prev, chunk) => Uint8List.fromList([...prev, ...chunk]),
+      );
+      return bytes;
+    } finally {
+      client.close();
     }
-    if (dir == null) return false;
+  }
 
-    String filePath = '${dir.path}/quran_audio/$fileName.mp3';
-    return File(filePath).exists();
+  Future<bool> isDownloaded(String fileName) async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/quran_audio/$fileName.mp3').exists();
   }
 
   Future<String?> getLocalPath(String fileName) async {
-    Directory? dir;
-    if (Platform.isAndroid) {
-      dir = await getExternalStorageDirectory();
-    } else {
-      dir = await getApplicationDocumentsDirectory();
-    }
-    if (dir == null) return null;
-    String filePath = '${dir.path}/quran_audio/$fileName.mp3';
-    if (await File(filePath).exists()) return filePath;
+    final dir = await getApplicationDocumentsDirectory();
+    final path = '${dir.path}/quran_audio/$fileName.mp3';
+    if (await File(path).exists()) return path;
     return null;
   }
 
-  Future<bool> _requestStoragePermission() async {
-    if (Platform.isAndroid) {
-      if (await Permission.storage.isGranted) return true;
-      if (await Permission.manageExternalStorage.isGranted) return true;
-
-      var status = await Permission.storage.request();
-      if (status.isGranted) return true;
-
-      if (await Permission.manageExternalStorage.isGranted) return true;
-      status = await Permission.manageExternalStorage.request();
-      return status.isGranted;
-    }
-    return true;
-  }
-
   void dispose() {
-    _positionSub?.cancel();
+    _posSub?.cancel();
     _stateSub?.cancel();
-    _durationSub?.cancel();
-    _stateController.close();
-    _progressController.close();
+    _durSub?.cancel();
+    _stateCtrl.close();
+    _progressCtrl.close();
     _player.dispose();
   }
 }

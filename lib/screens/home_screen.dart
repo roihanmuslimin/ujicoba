@@ -12,12 +12,33 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final QuranApi _api = QuranApi();
-  late Future<List<Surah>> _surahFuture;
+  List<Surah>? _surahList;
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _surahFuture = _api.getSurahList();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final list = await _api.getSurahList();
+      setState(() {
+        _surahList = list;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Gagal memuat data.\nPeriksa koneksi internet.';
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -30,76 +51,63 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Al-Qur\'an',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              'Bacalah dengan nama Tuhanmu',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 12,
-              ),
-            ),
+            const Text('Al-Qur\'an',
+                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+            Text('Bacalah dengan nama Tuhanmu',
+                style: TextStyle(color: Colors.grey[400], fontSize: 12)),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
-          ),
-        ],
       ),
-      body: FutureBuilder<List<Surah>>(
-        future: _surahFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
-            );
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red[300], size: 60),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Gagal memuat data',
-                    style: TextStyle(color: Colors.grey[300], fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _surahFuture = _api.getSurahList();
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6C63FF),
-                    ),
-                    child: const Text('Coba Lagi'),
-                  ),
-                ],
-              ),
-            );
-          }
+      body: _buildBody(),
+    );
+  }
 
-          final surahList = snapshot.data!;
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            itemCount: surahList.length,
-            itemBuilder: (context, index) {
-              final surah = surahList[index];
-              return _SurahCard(surah: surah, index: index);
-            },
-          );
-        },
+  Widget _buildBody() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.wifi_off, color: Colors.red[300], size: 64),
+              const SizedBox(height: 16),
+              Text(_error!, textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[300], fontSize: 16)),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Coba Lagi'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6C63FF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final list = _surahList!;
+    return RefreshIndicator(
+      color: const Color(0xFF6C63FF),
+      onRefresh: _loadData,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        itemCount: list.length,
+        itemBuilder: (_, i) => _SurahCard(
+          surah: list[i],
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => SurahDetailScreen(surah: list[i]),
+          )),
+        ),
       ),
     );
   }
@@ -107,9 +115,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _SurahCard extends StatelessWidget {
   final Surah surah;
-  final int index;
+  final VoidCallback onTap;
 
-  const _SurahCard({required this.surah, required this.index});
+  const _SurahCard({required this.surah, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -119,67 +127,35 @@ class _SurahCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SurahDetailScreen(surah: surah),
-            ),
-          );
-        },
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 48, height: 48,
                 decoration: BoxDecoration(
                   color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Center(
-                  child: Text(
-                    '${surah.nomor}',
-                    style: const TextStyle(
-                      color: Color(0xFF6C63FF),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
+                child: Center(child: Text('${surah.nomor}',
+                    style: const TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.bold, fontSize: 16))),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      surah.namaLatin,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    Text(surah.namaLatin,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
-                    Text(
-                      '${surah.arti} • ${surah.jumlahAyat} Ayat • ${surah.tempatTurun}',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text('${surah.arti} \u2022 ${surah.jumlahAyat} Ayat \u2022 ${surah.tempatTurun}',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 12)),
                   ],
                 ),
               ),
-              Text(
-                surah.nama,
-                style: const TextStyle(
-                  color: Color(0xFF6C63FF),
-                  fontSize: 20,
-                ),
-              ),
+              Text(surah.nama,
+                  style: const TextStyle(color: Color(0xFF6C63FF), fontSize: 20)),
             ],
           ),
         ),

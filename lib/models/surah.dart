@@ -5,8 +5,7 @@ class Surah {
   final int jumlahAyat;
   final String tempatTurun;
   final String arti;
-  final String deskripsi;
-  final String audio;
+  final String audioUrl;
 
   Surah({
     required this.nomor,
@@ -15,20 +14,18 @@ class Surah {
     required this.jumlahAyat,
     required this.tempatTurun,
     required this.arti,
-    required this.deskripsi,
-    required this.audio,
+    required this.audioUrl,
   });
 
   factory Surah.fromJson(Map<String, dynamic> json) {
     return Surah(
-      nomor: json['nomor'] ?? 0,
-      nama: json['nama'] ?? '',
-      namaLatin: json['nama_latin'] ?? '',
-      jumlahAyat: json['jumlah_ayat'] ?? 0,
-      tempatTurun: json['tempat_turun'] ?? '',
-      arti: json['arti'] ?? '',
-      deskripsi: json['deskripsi'] ?? '',
-      audio: json['audio'] ?? '',
+      nomor: (json['nomor'] ?? 0) as int,
+      nama: (json['nama'] ?? '') as String,
+      namaLatin: (json['nama_latin'] ?? '') as String,
+      jumlahAyat: (json['jumlah_ayat'] ?? 0) as int,
+      tempatTurun: (json['tempat_turun'] ?? '') as String,
+      arti: (json['arti'] ?? '') as String,
+      audioUrl: (json['audio'] ?? '') as String,
     );
   }
 }
