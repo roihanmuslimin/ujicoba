@@ -277,7 +277,6 @@ class _AyahCard extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 24,
                 height: 1.8,
-                fontFamily: 'me_quran',
               ),
             ),
             const SizedBox(height: 12),

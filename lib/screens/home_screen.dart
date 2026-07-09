@@ -178,7 +178,6 @@ class _SurahCard extends StatelessWidget {
                 style: const TextStyle(
                   color: Color(0xFF6C63FF),
                   fontSize: 20,
-                  fontFamily: 'me_quran',
                 ),
               ),
             ],
