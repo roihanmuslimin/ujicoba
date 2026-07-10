@@ -115,6 +115,28 @@ class AudioService {
     }
   }
 
+  Future<bool> playLocalList(
+    List<String> filePaths, {
+    int startIndex = 0,
+  }) async {
+    try {
+      _setState(PlayState.loading);
+      await _player.stop();
+      _totalItems = filePaths.length;
+      final sources = filePaths.map((p) => AudioSource.file(p)).toList();
+      await _player.setAudioSource(ConcatenatingAudioSource(children: sources));
+      await _player.seek(Duration.zero, index: startIndex);
+      _currentIndex = startIndex;
+      _indexCtrl.add(startIndex);
+      await _player.play();
+      _setState(PlayState.playing);
+      return true;
+    } catch (e) {
+      _setState(PlayState.error);
+      return false;
+    }
+  }
+
   Future<void> next() async {
     if (_totalItems <= 1) return;
     final nextIdx = (_currentIndex ?? 0) + 1;

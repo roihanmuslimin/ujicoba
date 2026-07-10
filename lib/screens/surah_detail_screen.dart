@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/surah.dart';
 import '../models/ayah.dart';
@@ -30,6 +31,10 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   final Map<int, GlobalKey> _itemKeys = {};
   bool _manualScroll = false;
   Timer? _manualScrollTimer;
+
+  int _selectedQari = 7;
+  double _arabicFontSize = 24;
+  double _translationFontSize = 14;
 
   @override
   void initState() {
@@ -72,7 +77,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     if (_manualScroll) return;
     final ctx = _itemKeys[verseIdx]?.currentContext;
     if (ctx == null) return;
-
     Scrollable.ensureVisible(
       ctx,
       duration: const Duration(milliseconds: 400),
@@ -96,10 +100,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     if (idx == null || _ayatList == null) return -1;
     return _playStartOffset + idx;
   }
-
-  int _selectedQari = 7;
-  double _arabicFontSize = 24;
-  double _translationFontSize = 14;
 
   Future<void> _loadQari() async {
     final id = await SettingsService.getQariId();
@@ -139,6 +139,12 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     return SettingsService.audioUrl(_selectedQari, widget.surah.id, ayahNum);
   }
 
+  String _audioFileName(int ayahNum) {
+    final s = widget.surah.id.toString().padLeft(3, '0');
+    final a = ayahNum.toString().padLeft(3, '0');
+    return '${SettingsService.getQariPath(_selectedQari)}_${s}_$a';
+  }
+
   void _showAyahOptions(int index) {
     final ayah = _ayatList![index];
     showModalBottomSheet(
@@ -153,25 +159,65 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
         audioService: _audio,
         onPlayFromHere: () {
           Navigator.pop(ctx);
-          _playFromIndex(index);
+          _downloadAndPlay(index);
         },
       ),
     );
   }
 
-  void _playFromIndex(int startIndex) {
+  Future<void> _downloadAndPlay(int startIndex) async {
     if (_ayatList == null || startIndex >= _ayatList!.length) return;
 
-    final urls = _ayatList!
-        .skip(startIndex)
-        .map((a) => _ayahAudioUrl(a.nomor))
-        .where((u) => u.isNotEmpty)
-        .toList();
+    final ayat = _ayatList!.skip(startIndex).toList();
+    final dir = await _audio.getDownloadDir();
+    final audioDir = Directory('$dir/quran_audio');
+    if (!await audioDir.exists()) await audioDir.create(recursive: true);
 
-    if (urls.isEmpty) return;
+    List<String> localFiles = [];
+    List<_DownloadItem> needDownload = [];
 
-    setState(() => _playStartOffset = startIndex);
-    _audio.playList(urls);
+    for (int i = 0; i < ayat.length; i++) {
+      final ayah = ayat[i];
+      final fileName = _audioFileName(ayah.nomor);
+      final localPath = '${audioDir.path}/$fileName.mp3';
+      if (await File(localPath).exists()) {
+        localFiles.add(localPath);
+      } else {
+        needDownload.add(
+          _DownloadItem(
+            index: i,
+            ayahNum: ayah.nomor,
+            url: _ayahAudioUrl(ayah.nomor),
+            fileName: fileName,
+          ),
+        );
+        localFiles.add(localPath);
+      }
+    }
+
+    if (needDownload.isEmpty) {
+      setState(() => _playStartOffset = startIndex);
+      await _audio.playLocalList(localFiles);
+      return;
+    }
+
+    if (!mounted) return;
+    await showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (ctx) => _DownloadProgressDialog(
+        items: needDownload,
+        totalItems: ayat.length,
+        audioService: _audio,
+        onComplete: (allPaths) async {
+          Navigator.of(ctx).pop();
+          if (mounted) {
+            setState(() => _playStartOffset = startIndex);
+            await _audio.playLocalList(allPaths);
+          }
+        },
+      ),
+    );
   }
 
   String _revelationPlace(String place) {
@@ -273,6 +319,141 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
         ),
         MiniPlayer(onStop: () => setState(() => _playStartOffset = 0)),
       ],
+    );
+  }
+}
+
+class _DownloadItem {
+  final int index;
+  final int ayahNum;
+  final String url;
+  final String fileName;
+  _DownloadItem({
+    required this.index,
+    required this.ayahNum,
+    required this.url,
+    required this.fileName,
+  });
+}
+
+class _DownloadProgressDialog extends StatefulWidget {
+  final List<_DownloadItem> items;
+  final int totalItems;
+  final AudioService audioService;
+  final void Function(List<String> allPaths) onComplete;
+
+  const _DownloadProgressDialog({
+    required this.items,
+    required this.totalItems,
+    required this.audioService,
+    required this.onComplete,
+  });
+
+  @override
+  State<_DownloadProgressDialog> createState() =>
+      _DownloadProgressDialogState();
+}
+
+class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
+  int _currentItem = 0;
+  double _itemProgress = 0;
+  bool _downloading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _startDownload();
+  }
+
+  Future<void> _startDownload() async {
+    final dir = await widget.audioService.getDownloadDir();
+    final audioDir = '$dir/quran_audio';
+
+    for (int i = 0; i < widget.items.length; i++) {
+      if (!mounted) return;
+      setState(() {
+        _currentItem = i;
+        _itemProgress = 0;
+      });
+
+      final item = widget.items[i];
+      await widget.audioService.downloadAudio(
+        item.url,
+        item.fileName,
+        onProgress: (p) {
+          if (mounted) setState(() => _itemProgress = p);
+        },
+      );
+    }
+
+    if (!mounted) return;
+    setState(() => _downloading = false);
+
+    final allPaths = <String>[];
+    for (int i = 0; i < widget.items.length; i++) {
+      allPaths.add('$audioDir/${widget.items[i].fileName}.mp3');
+    }
+    widget.onComplete(allPaths);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = widget.items.length;
+    final done = _currentItem + (_itemProgress >= 1 ? 1 : 0);
+    final overallProgress = total > 0 ? done / total : 0.0;
+
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1E2030),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      content: SizedBox(
+        width: 280,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.download_rounded,
+              color: Color(0xFF6C63FF),
+              size: 40,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _downloading ? 'Mengunduh...' : 'Selesai!',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Ayat ${_currentItem + 1} dari $total',
+              style: TextStyle(color: Colors.grey[400], fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: overallProgress,
+                minHeight: 8,
+                backgroundColor: Colors.grey[800],
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xFF6C63FF),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${(overallProgress * 100).toInt()}%',
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Ayat ini: ${(_itemProgress * 100).toInt()}%',
+              style: TextStyle(color: Colors.grey[600], fontSize: 11),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -506,9 +687,9 @@ class _AyahBottomSheet extends StatelessWidget {
             children: [
               Expanded(
                 child: _ActionButton(
-                  icon: Icons.play_circle_fill,
-                  label: 'Putar Disini',
-                  subtitle: 'Dari ayat ini sampai selesai',
+                  icon: Icons.download_rounded,
+                  label: 'Download & Putar',
+                  subtitle: 'Download dulu, putar offline',
                   color: const Color(0xFF6C63FF),
                   onTap: onPlayFromHere,
                 ),
