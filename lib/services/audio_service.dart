@@ -11,7 +11,6 @@ class AudioService {
   PlayState _state = PlayState.stopped;
   double _progress = 0;
   Duration _duration = Duration.zero;
-  String? _currentUrl;
   StreamSubscription? _posSub;
   StreamSubscription? _stateSub;
   StreamSubscription? _durSub;
@@ -19,7 +18,6 @@ class AudioService {
   PlayState get state => _state;
   double get progress => _progress;
   Duration get duration => _duration;
-  String? get currentUrl => _currentUrl;
 
   final StreamController<PlayState> _stateCtrl =
       StreamController<PlayState>.broadcast();
@@ -39,9 +37,6 @@ class AudioService {
     _stateSub = _player.playerStateStream.listen((ps) {
       if (ps.processingState == ProcessingState.completed) {
         _setState(PlayState.stopped);
-      } else if (ps.processingState == ProcessingState.ready &&
-          _state == PlayState.loading) {
-        if (_player.playing) _setState(PlayState.playing);
       }
     });
     _durSub = _player.durationStream.listen((d) {
@@ -54,25 +49,10 @@ class AudioService {
     _stateCtrl.add(s);
   }
 
-  Future<void> play(String url) async {
+  Future<void> playUrl(String url) async {
     try {
       _setState(PlayState.loading);
-      _currentUrl = url;
-      await _player.stop();
       await _player.setUrl(url);
-      await _player.play();
-      _setState(PlayState.playing);
-    } catch (e) {
-      _setState(PlayState.error);
-    }
-  }
-
-  Future<void> playLocal(String path) async {
-    try {
-      _setState(PlayState.loading);
-      _currentUrl = path;
-      await _player.stop();
-      await _player.setFilePath(path);
       await _player.play();
       _setState(PlayState.playing);
     } catch (e) {
@@ -106,7 +86,7 @@ class AudioService {
     _progressCtrl.add(0);
   }
 
-  Future<String?> download(String url, String fileName) async {
+  Future<String?> downloadAudio(String url, String fileName) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final saveDir = Directory('${dir.path}/quran_audio');
@@ -149,13 +129,6 @@ class AudioService {
   Future<bool> isDownloaded(String fileName) async {
     final dir = await getApplicationDocumentsDirectory();
     return File('${dir.path}/quran_audio/$fileName.mp3').exists();
-  }
-
-  Future<String?> getLocalPath(String fileName) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final path = '${dir.path}/quran_audio/$fileName.mp3';
-    if (await File(path).exists()) return path;
-    return null;
   }
 
   void dispose() {

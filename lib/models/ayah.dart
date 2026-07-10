@@ -3,20 +3,13 @@ class Ayah {
   final String arab;
   final String latin;
   final String terjemahan;
+  final String audioUrl;
 
   Ayah({
     required this.nomor,
     required this.arab,
     required this.latin,
     required this.terjemahan,
+    required this.audioUrl,
   });
-
-  factory Ayah.fromJson(Map<String, dynamic> json) {
-    return Ayah(
-      nomor: (json['nomor'] ?? 0) as int,
-      arab: (json['ar'] ?? '') as String,
-      latin: (json['tr'] ?? '') as String,
-      terjemahan: (json['idn'] ?? '') as String,
-    );
-  }
 }

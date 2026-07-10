@@ -160,7 +160,7 @@ class _SurahCard extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text(
-                    '${surah.nomor}',
+                    '${surah.id}',
                     style: const TextStyle(
                       color: Color(0xFF6C63FF),
                       fontWeight: FontWeight.bold,
@@ -175,7 +175,7 @@ class _SurahCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      surah.namaLatin,
+                      surah.nameSimple,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -184,14 +184,14 @@ class _SurahCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${surah.arti} \u2022 ${surah.jumlahAyat} Ayat \u2022 ${surah.tempatTurun}',
+                      '${surah.translatedName} \u2022 ${surah.versesCount} Ayat \u2022 ${surah.revelationPlace}',
                       style: TextStyle(color: Colors.grey[400], fontSize: 12),
                     ),
                   ],
                 ),
               ),
               Text(
-                surah.nama,
+                surah.nameArabic,
                 style: const TextStyle(color: Color(0xFF6C63FF), fontSize: 20),
               ),
             ],

@@ -53,7 +53,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
       _error = null;
     });
     try {
-      final data = await _api.getSurahDetail(widget.surah.nomor);
+      final data = await _api.getSurahDetail(widget.surah.id);
       setState(() {
         _ayatList = data['ayat'] as List<Ayah>;
         _loading = false;
@@ -66,12 +66,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     }
   }
 
-  String _getAyahAudioUrl(int ayahNum) {
-    final s = widget.surah.nomor.toString().padLeft(3, '0');
-    final a = ayahNum.toString().padLeft(3, '0');
-    return 'https://cdn.equran.id/audio/ayah/$s$a.mp3';
-  }
-
   Future<void> _togglePlay(int index) async {
     if (_isPlayingAll) {
       await _audio.stop();
@@ -79,7 +73,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     }
 
     final ayah = _ayatList![index];
-    final url = _getAyahAudioUrl(ayah.nomor);
+    if (ayah.audioUrl.isEmpty) return;
 
     if (_playingIndex == index) {
       await _audio.pause();
@@ -88,23 +82,15 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     }
 
     setState(() => _playingIndex = index);
-    final fileName = '${widget.surah.nomor}_${ayah.nomor}';
-    final local = await _audio.getLocalPath(fileName);
-    if (local != null) {
-      await _audio.playLocal(local);
-    } else {
-      await _audio.play(url);
-    }
+    await _audio.playUrl(ayah.audioUrl);
 
-    if (_audio.state == PlayState.error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal putar audio. Coba download dulu.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    if (_audio.state == PlayState.error && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal putar audio'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -114,35 +100,38 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
       return;
     }
 
-    final urls = _ayatList!.map((a) => _getAyahAudioUrl(a.nomor)).toList();
+    final urls = _ayatList!
+        .map((a) => a.audioUrl)
+        .where((u) => u.isNotEmpty)
+        .toList();
+    if (urls.isEmpty) return;
+
     setState(() {
       _isPlayingAll = true;
       _playingIndex = 0;
     });
-
     await _audio.playList(urls);
 
-    if (_audio.state == PlayState.error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal putar audio. Periksa koneksi.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() {
-          _isPlayingAll = false;
-          _playingIndex = null;
-        });
-      }
+    if (_audio.state == PlayState.error && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal putar audio'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() {
+        _isPlayingAll = false;
+        _playingIndex = null;
+      });
     }
   }
 
   Future<void> _download(int index) async {
     final ayah = _ayatList![index];
-    final url = _getAyahAudioUrl(ayah.nomor);
-    final fileName = '${widget.surah.nomor}_${ayah.nomor}';
-    final path = await _audio.download(url, fileName);
+    if (ayah.audioUrl.isEmpty) return;
+
+    final fileName = '${widget.surah.id}_${ayah.nomor}';
+    final path = await _audio.downloadAudio(ayah.audioUrl, fileName);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -153,8 +142,15 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     }
   }
 
-  String _getSurahAudioUrl() {
-    return 'https://cdn.equran.id/audio-full/Misyari-Rasyid-Al-Afasi/${widget.surah.nomor.toString().padLeft(3, '0')}.mp3';
+  String _revelationPlace(String place) {
+    switch (place) {
+      case 'makkah':
+        return 'Makkiyah';
+      case 'madinah':
+        return 'Madaniyah';
+      default:
+        return place;
+    }
   }
 
   @override
@@ -169,7 +165,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          widget.surah.namaLatin,
+          widget.surah.nameSimple,
           style: const TextStyle(color: Colors.white),
         ),
       ),
@@ -202,10 +198,16 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     }
 
     final list = _ayatList!;
+    final hasAudio = list.isNotEmpty && list.first.audioUrl.isNotEmpty;
+
     return Column(
       children: [
-        _Header(surah: widget.surah),
-        _PlayAllBar(isPlaying: _isPlayingAll, onPlayAll: _playAll),
+        _Header(
+          surah: widget.surah,
+          revelationPlace: _revelationPlace(widget.surah.revelationPlace),
+        ),
+        if (hasAudio)
+          _PlayAllBar(isPlaying: _isPlayingAll, onPlayAll: _playAll),
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -213,8 +215,10 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
             itemBuilder: (_, i) => _AyahCard(
               ayah: list[i],
               isPlaying: _playingIndex == i,
-              onPlay: () => _togglePlay(i),
-              onDownload: () => _download(i),
+              onPlay: list[i].audioUrl.isNotEmpty ? () => _togglePlay(i) : null,
+              onDownload: list[i].audioUrl.isNotEmpty
+                  ? () => _download(i)
+                  : null,
             ),
           ),
         ),
@@ -225,7 +229,9 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
 
 class _Header extends StatelessWidget {
   final Surah surah;
-  const _Header({required this.surah});
+  final String revelationPlace;
+
+  const _Header({required this.surah, required this.revelationPlace});
 
   @override
   Widget build(BuildContext context) {
@@ -246,7 +252,7 @@ class _Header extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            surah.nama,
+            surah.nameArabic,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -255,7 +261,7 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            surah.namaLatin,
+            surah.nameSimple,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.9),
               fontSize: 18,
@@ -263,7 +269,7 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${surah.arti} \u2022 ${surah.jumlahAyat} Ayat \u2022 ${surah.tempatTurun}',
+            '${surah.translatedName} \u2022 ${surah.versesCount} Ayat \u2022 $revelationPlace',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.7),
               fontSize: 14,
@@ -308,8 +314,8 @@ class _PlayAllBar extends StatelessWidget {
 class _AyahCard extends StatelessWidget {
   final Ayah ayah;
   final bool isPlaying;
-  final VoidCallback onPlay;
-  final VoidCallback onDownload;
+  final VoidCallback? onPlay;
+  final VoidCallback? onDownload;
 
   const _AyahCard({
     required this.ayah,
@@ -355,58 +361,64 @@ class _AyahCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        isPlaying ? Icons.pause_circle : Icons.play_circle,
-                        color: isPlaying
-                            ? const Color(0xFF6C63FF)
-                            : Colors.grey[400],
-                        size: 28,
+                if (onPlay != null)
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          isPlaying ? Icons.pause_circle : Icons.play_circle,
+                          color: isPlaying
+                              ? const Color(0xFF6C63FF)
+                              : Colors.grey[400],
+                          size: 28,
+                        ),
+                        onPressed: onPlay,
                       ),
-                      onPressed: onPlay,
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.download,
-                        color: Colors.grey[400],
-                        size: 20,
-                      ),
-                      onPressed: onDownload,
-                    ),
-                  ],
-                ),
+                      if (onDownload != null)
+                        IconButton(
+                          icon: Icon(
+                            Icons.download,
+                            color: Colors.grey[400],
+                            size: 20,
+                          ),
+                          onPressed: onDownload,
+                        ),
+                    ],
+                  ),
               ],
             ),
             const SizedBox(height: 16),
             TajwidText(text: ayah.arab, fontSize: 24, height: 1.8),
-            const SizedBox(height: 12),
-            Text(
-              ayah.latin,
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 14,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B1D2B),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                ayah.terjemahan,
+            if (ayah.latin.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                ayah.latin,
                 style: TextStyle(
-                  color: Colors.grey[300],
+                  color: Colors.grey[400],
                   fontSize: 14,
-                  height: 1.5,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
-            ),
+            ],
+            if (ayah.terjemahan.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B1D2B),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  ayah.terjemahan,
+                  style: TextStyle(
+                    color: Colors.grey[300],
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

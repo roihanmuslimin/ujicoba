@@ -1,31 +1,29 @@
 class Surah {
-  final int nomor;
-  final String nama;
-  final String namaLatin;
-  final int jumlahAyat;
-  final String tempatTurun;
-  final String arti;
-  final String audioUrl;
+  final int id;
+  final String nameSimple;
+  final String nameArabic;
+  final int versesCount;
+  final String revelationPlace;
+  final String translatedName;
 
   Surah({
-    required this.nomor,
-    required this.nama,
-    required this.namaLatin,
-    required this.jumlahAyat,
-    required this.tempatTurun,
-    required this.arti,
-    required this.audioUrl,
+    required this.id,
+    required this.nameSimple,
+    required this.nameArabic,
+    required this.versesCount,
+    required this.revelationPlace,
+    required this.translatedName,
   });
 
   factory Surah.fromJson(Map<String, dynamic> json) {
+    final translated = json['translated_name'] ?? {};
     return Surah(
-      nomor: (json['nomor'] ?? 0) as int,
-      nama: (json['nama'] ?? '') as String,
-      namaLatin: (json['nama_latin'] ?? '') as String,
-      jumlahAyat: (json['jumlah_ayat'] ?? 0) as int,
-      tempatTurun: (json['tempat_turun'] ?? '') as String,
-      arti: (json['arti'] ?? '') as String,
-      audioUrl: (json['audio'] ?? '') as String,
+      id: (json['id'] ?? 0) as int,
+      nameSimple: (json['name_simple'] ?? '') as String,
+      nameArabic: (json['name_arabic'] ?? '') as String,
+      versesCount: (json['verses_count'] ?? 0) as int,
+      revelationPlace: (json['revelation_place'] ?? '') as String,
+      translatedName: (translated['name'] ?? '') as String,
     );
   }
 }
