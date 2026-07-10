@@ -27,6 +27,9 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   StreamSubscription? _indexSub;
   bool _isPlaying = false;
   int _playStartOffset = 0;
+  final Map<int, GlobalKey> _itemKeys = {};
+  bool _manualScroll = false;
+  Timer? _manualScrollTimer;
 
   @override
   void initState() {
@@ -47,22 +50,43 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
       setState(() {});
       if (idx != null) {
         final verseIdx = _playStartOffset + idx;
-        if (verseIdx < _ayatList!.length && _scrollCtrl.hasClients) {
-          _scrollCtrl.animateTo(
-            verseIdx * 120.0,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOut,
-          );
+        if (verseIdx < _ayatList!.length) {
+          _ensureVisible(verseIdx);
         }
       }
     });
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollCtrl.hasClients) return;
+    _manualScroll = true;
+    _manualScrollTimer?.cancel();
+    _manualScrollTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) _manualScroll = false;
+    });
+  }
+
+  void _ensureVisible(int verseIdx) {
+    if (_manualScroll) return;
+    final key = _itemKeys[verseIdx];
+    if (key?.currentContext == null) return;
+
+    Scrollable.ensureVisible(
+      key.currentContext!,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOut,
+      alignment: 0.15,
+    );
   }
 
   @override
   void dispose() {
     _stateSub?.cancel();
     _indexSub?.cancel();
+    _scrollCtrl.removeListener(_onScroll);
     _scrollCtrl.dispose();
+    _manualScrollTimer?.cancel();
     super.dispose();
   }
 
@@ -83,6 +107,9 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
         _ayatList = data['ayat'] as List<Ayah>;
         _loading = false;
       });
+      for (int i = 0; i < _ayatList!.length; i++) {
+        _itemKeys[i] = GlobalKey();
+      }
     } catch (e) {
       setState(() {
         _error = 'Gagal memuat ayat';
@@ -219,6 +246,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
               final idx = i - 1;
               final ayah = list[idx];
               return _AyahCard(
+                key: _itemKeys[idx],
                 ayah: ayah,
                 isPlaying: activeIdx == idx,
                 onTap: () => _showAyahOptions(idx),
@@ -291,6 +319,7 @@ class _AyahCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _AyahCard({
+    super.key,
     required this.ayah,
     required this.isPlaying,
     required this.onTap,
