@@ -85,8 +85,10 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   }
 
   int get _activeVerseIndex {
+    if (_ayatList == null) return -1;
+    if (_audio.activeSurahId != widget.surah.id) return -1;
     final idx = _audio.currentIndex;
-    if (idx == null || _ayatList == null) return -1;
+    if (idx == null) return -1;
     return _playStartOffset + idx;
   }
 
@@ -117,6 +119,14 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
         _loading = false;
       });
       for (int i = 0; i < _ayatList!.length; i++) _itemKeys[i] = GlobalKey();
+      if (_audio.activeSurahId == widget.surah.id) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            final activeIdx = _activeVerseIndex;
+            if (activeIdx >= 0) _ensureVisible(activeIdx);
+          }
+        });
+      }
     } catch (e) {
       setState(() {
         _error = 'Gagal memuat ayat';
