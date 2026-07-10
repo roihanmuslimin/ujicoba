@@ -52,7 +52,7 @@ class TajwidText extends StatelessWidget {
           found = true;
           continue;
         }
-        if (i + 1 < text.length && _isShaddahWithSukun(ch, text, i)) {
+        if (i + 1 < text.length && _isShaddahWithSukun(text, i)) {
           segments.add(_TajwidSegment(ch, _qalqalahColor));
           i++;
           found = true;

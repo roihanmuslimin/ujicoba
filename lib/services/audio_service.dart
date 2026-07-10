@@ -109,7 +109,7 @@ class AudioService {
     try {
       final request = await client.getUrl(uri);
       final response = await request.close();
-      final chunks = <Uint8List>[];
+      final chunks = <List<int>>[];
       await for (final chunk in response) {
         chunks.add(chunk);
       }
