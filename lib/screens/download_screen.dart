@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/surah.dart';
+import '../models/ayah.dart';
 import '../services/quran_api.dart';
 import '../services/audio_service.dart';
 import '../services/settings_service.dart';
@@ -75,16 +76,14 @@ class _DownloadScreenState extends State<DownloadScreen> {
         task.surah.id,
         recitationId: qariId,
       );
-      final ayat = data['ayat'] as List;
+      final ayat = (data['ayat'] as List).cast<Ayah>();
 
       for (int i = 0; i < ayat.length; i++) {
         if (!_running || _paused) return;
 
-        final ayahNum = (ayat[i]['verse_number'] ?? i + 1) as int;
-        final audioPath = ayat[i]['audio']?['url'] ?? '';
-        final url = audioPath.isNotEmpty
-            ? 'https://verses.quran.com/$audioPath'
-            : '';
+        final ayah = ayat[i];
+        final ayahNum = ayah.nomor;
+        final url = ayah.audioUrl;
         if (url.isEmpty) continue;
 
         final s = task.surah.id.toString().padLeft(3, '0');

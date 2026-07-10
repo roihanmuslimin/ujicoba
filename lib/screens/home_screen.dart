@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/surah.dart';
 import '../services/quran_api.dart';
-import 'surah_detail_screen.dart';
+import 'surah_reader_screen.dart';
 import 'settings_screen.dart';
 import 'download_screen.dart';
 import 'downloads_screen.dart';
@@ -114,8 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           if (!_selectionMode) ...[
             IconButton(
-              icon: const Icon(Icons.download_done_rounded,
-                  color: Colors.white),
+              icon: const Icon(Icons.download_done, color: Colors.white),
               tooltip: 'Unduhan',
               onPressed: () => Navigator.push(
                 context,
@@ -223,10 +222,8 @@ class _HomeScreenState extends State<HomeScreen> {
               : () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => SurahDetailScreen(
-                      allSurahs: list,
-                      currentIndex: i,
-                    ),
+                    builder: (_) =>
+                        SurahReaderScreen(surahs: list, initialIndex: i),
                   ),
                 ),
           onLongPress: !_selectionMode

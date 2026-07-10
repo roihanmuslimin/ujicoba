@@ -88,9 +88,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
                 setState(() => _currentIdx = idx);
               },
               itemBuilder: (_, idx) {
-                return _SurahPage(
-                  surah: widget.allSurahs[idx],
-                );
+                return _SurahPage(surah: widget.allSurahs[idx]);
               },
             ),
           ),
