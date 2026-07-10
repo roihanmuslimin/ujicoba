@@ -19,12 +19,14 @@ class SurahDetailScreen extends StatefulWidget {
 class _SurahDetailScreenState extends State<SurahDetailScreen> {
   final QuranApi _api = QuranApi();
   final AudioService _audio = AudioService.instance;
+  final ScrollController _scrollCtrl = ScrollController();
   List<Ayah>? _ayatList;
   bool _loading = true;
   String? _error;
   StreamSubscription? _stateSub;
   StreamSubscription? _indexSub;
   bool _isPlaying = false;
+  int _playStartOffset = 0;
 
   @override
   void initState() {
@@ -36,12 +38,23 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
           () => _isPlaying = s == PlayState.playing || s == PlayState.paused,
         );
         if (s == PlayState.stopped) {
-          setState(() {});
+          setState(() => _playStartOffset = 0);
         }
       }
     });
     _indexSub = _audio.indexStream.listen((idx) {
-      if (mounted) setState(() {});
+      if (!mounted || _ayatList == null) return;
+      setState(() {});
+      if (idx != null) {
+        final verseIdx = _playStartOffset + idx;
+        if (verseIdx < _ayatList!.length && _scrollCtrl.hasClients) {
+          _scrollCtrl.animateTo(
+            verseIdx * 120.0,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOut,
+          );
+        }
+      }
     });
   }
 
@@ -49,7 +62,14 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   void dispose() {
     _stateSub?.cancel();
     _indexSub?.cancel();
+    _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  int get _activeVerseIndex {
+    final idx = _audio.currentIndex;
+    if (idx == null || _ayatList == null) return -1;
+    return _playStartOffset + idx;
   }
 
   Future<void> _loadData() async {
@@ -71,22 +91,10 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     }
   }
 
-  Future<List<String>> _buildAudioUrls() {
-    final qari = SettingsService.getQariPath(7);
-    return Future.value(
-      _ayatList!
-          .map((a) => _ayahAudioUrl(a.nomor))
-          .where((u) => u.isNotEmpty)
-          .toList(),
-    );
-  }
-
   String _ayahAudioUrl(int ayahNum) {
     final s = widget.surah.id.toString().padLeft(3, '0');
     final a = ayahNum.toString().padLeft(3, '0');
-    final qariId = 7;
-    final qariPath = SettingsService.getQariPath(qariId);
-    return 'https://verses.quran.com/$qariPath/mp3/$s$a.mp3';
+    return 'https://verses.quran.com/Alafasy/mp3/$s$a.mp3';
   }
 
   void _showAyahOptions(int index) {
@@ -101,15 +109,15 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
         ayah: ayah,
         surahId: widget.surah.id,
         audioService: _audio,
-        onPlayFromHere: () async {
+        onPlayFromHere: () {
           Navigator.pop(ctx);
-          await _playFromIndex(index);
+          _playFromIndex(index);
         },
       ),
     );
   }
 
-  Future<void> _playFromIndex(int startIndex) async {
+  void _playFromIndex(int startIndex) {
     if (_ayatList == null || startIndex >= _ayatList!.length) return;
 
     final urls = _ayatList!
@@ -120,15 +128,8 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
 
     if (urls.isEmpty) return;
 
-    final ok = await _audio.playList(urls);
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gagal memutar audio'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    setState(() => _playStartOffset = startIndex);
+    _audio.playList(urls);
   }
 
   String _revelationPlace(String place) {
@@ -187,12 +188,13 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     }
 
     final list = _ayatList!;
-    final currentIdx = _audio.currentIndex ?? 0;
+    final activeIdx = _activeVerseIndex;
 
     return Column(
       children: [
         Expanded(
           child: ListView.builder(
+            controller: _scrollCtrl,
             padding: const EdgeInsets.only(
               top: 12,
               left: 12,
@@ -218,13 +220,13 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
               final ayah = list[idx];
               return _AyahCard(
                 ayah: ayah,
-                isPlaying: _isPlaying && _audio.currentIndex == idx,
+                isPlaying: activeIdx == idx,
                 onTap: () => _showAyahOptions(idx),
               );
             },
           ),
         ),
-        MiniPlayer(onStop: () => setState(() {})),
+        MiniPlayer(onStop: () => setState(() => _playStartOffset = 0)),
       ],
     );
   }
@@ -407,7 +409,7 @@ class _VerseNumber extends StatelessWidget {
   }
 }
 
-class _AyahBottomSheet extends StatefulWidget {
+class _AyahBottomSheet extends StatelessWidget {
   final Ayah ayah;
   final int surahId;
   final AudioService audioService;
@@ -421,63 +423,7 @@ class _AyahBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<_AyahBottomSheet> createState() => _AyahBottomSheetState();
-}
-
-class _AyahBottomSheetState extends State<_AyahBottomSheet> {
-  double? _downloadProgress;
-  bool _downloading = false;
-
-  String get _fileName => '${widget.surahId}_${widget.ayah.nomor}';
-
-  Future<void> _downloadAndPlay() async {
-    if (widget.ayah.audioUrl.isEmpty) return;
-
-    setState(() {
-      _downloading = true;
-      _downloadProgress = 0;
-    });
-
-    final path = await widget.audioService.downloadAudio(
-      widget.ayah.audioUrl,
-      _fileName,
-      onProgress: (p) {
-        if (mounted)
-          setState(() {
-            _downloadProgress = p;
-          });
-      },
-    );
-
-    if (!mounted) return;
-
-    if (path != null) {
-      setState(() {
-        _downloadProgress = 1;
-        _downloading = false;
-      });
-      widget.onPlayFromHere();
-    } else {
-      setState(() {
-        _downloading = false;
-        _downloadProgress = null;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal mengunduh audio'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final ayah = widget.ayah;
-    final isDownloaded = _downloadProgress == 1;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       child: Column(
@@ -502,33 +448,6 @@ class _AyahBottomSheetState extends State<_AyahBottomSheet> {
           ),
           const SizedBox(height: 24),
 
-          if (_downloading &&
-              _downloadProgress != null &&
-              _downloadProgress! < 1)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: Column(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: LinearProgressIndicator(
-                      value: _downloadProgress,
-                      minHeight: 6,
-                      backgroundColor: Colors.grey[800],
-                      valueColor: const AlwaysStoppedAnimation(
-                        Color(0xFF6C63FF),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Mengunduh ${(_downloadProgress! * 100).toInt()}%',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-
           Row(
             children: [
               Expanded(
@@ -537,13 +456,7 @@ class _AyahBottomSheetState extends State<_AyahBottomSheet> {
                   label: 'Putar Disini',
                   subtitle: 'Dari ayat ini sampai selesai',
                   color: const Color(0xFF6C63FF),
-                  onTap: () async {
-                    if (!isDownloaded && !_downloading) {
-                      await _downloadAndPlay();
-                    } else {
-                      widget.onPlayFromHere();
-                    }
-                  },
+                  onTap: onPlayFromHere,
                 ),
               ),
               const SizedBox(width: 12),

@@ -197,7 +197,9 @@ class QuranApi {
       final translations = v['translations'] ?? [];
       String translation = '';
       if (translations.isNotEmpty) {
-        translation = translations[0]['text'] ?? '';
+        translation = (translations[0]['text'] ?? '') as String;
+        translation = translation.replaceAll(RegExp(r'<[^>]*>'), '');
+        translation = translation.replaceAll('&nbsp;', ' ').trim();
       }
 
       return Ayah(
