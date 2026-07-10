@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/surah.dart';
 import '../services/quran_api.dart';
+import '../services/settings_service.dart';
 import 'surah_detail_screen.dart';
 import 'settings_screen.dart';
+import 'download_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +18,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Surah>? _surahList;
   bool _loading = true;
   String? _error;
+  bool _selectionMode = false;
+  final Set<int> _selectedSurahs = {};
 
   @override
   void initState() {
@@ -42,6 +46,32 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _toggleSelection(Surah surah) {
+    setState(() {
+      if (_selectedSurahs.contains(surah.id)) {
+        _selectedSurahs.remove(surah.id);
+      } else {
+        _selectedSurahs.add(surah.id);
+      }
+    });
+  }
+
+  void _startDownload() {
+    if (_selectedSurahs.isEmpty) return;
+    final surahs =
+        _surahList!.where((s) => _selectedSurahs.contains(s.id)).toList()
+          ..sort((a, b) => a.id.compareTo(b.id));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => DownloadScreen(surahs: surahs)),
+    ).then(
+      (_) => setState(() {
+        _selectionMode = false;
+        _selectedSurahs.clear();
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,24 +79,44 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF131420),
         elevation: 0,
+        leading: _selectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => setState(() {
+                  _selectionMode = false;
+                  _selectedSurahs.clear();
+                }),
+              )
+            : null,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Al-Qur\'an',
-              style: TextStyle(
+            Text(
+              _selectionMode ? 'Pilih Surah' : 'Al-Qur\'an',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            Text(
-              'Bacalah dengan nama Tuhanmu',
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-            ),
+            if (!_selectionMode)
+              Text(
+                'Bacalah dengan nama Tuhanmu',
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              ),
+            if (_selectionMode)
+              Text(
+                '${_selectedSurahs.length} terpilih',
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              ),
           ],
         ),
         actions: [
+          if (!_selectionMode)
+            IconButton(
+              icon: const Icon(Icons.download_rounded, color: Colors.white),
+              onPressed: () => setState(() => _selectionMode = true),
+            ),
           IconButton(
             icon: const Icon(Icons.settings_rounded, color: Colors.white),
             onPressed: () => Navigator.push(
@@ -77,6 +127,32 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: _buildBody(),
+      bottomNavigationBar: _selectionMode && _selectedSurahs.isNotEmpty
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E2030),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: SafeArea(
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _startDownload,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E7D32),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text('Download ${_selectedSurahs.length} Surah'),
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 
@@ -86,7 +162,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
       );
     }
-
     if (_error != null) {
       return Center(
         child: Padding(
@@ -130,12 +205,22 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: list.length,
         itemBuilder: (_, i) => _SurahCard(
           surah: list[i],
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => SurahDetailScreen(surah: list[i]),
-            ),
-          ),
+          selected: _selectedSurahs.contains(list[i].id),
+          selectionMode: _selectionMode,
+          onTap: _selectionMode
+              ? () => _toggleSelection(list[i])
+              : () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SurahDetailScreen(surah: list[i]),
+                  ),
+                ),
+          onLongPress: !_selectionMode
+              ? () => setState(() {
+                  _selectionMode = true;
+                  _selectedSurahs.add(list[i].id);
+                })
+              : null,
         ),
       ),
     );
@@ -144,23 +229,51 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _SurahCard extends StatelessWidget {
   final Surah surah;
+  final bool selected;
+  final bool selectionMode;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  const _SurahCard({required this.surah, required this.onTap});
+  const _SurahCard({
+    required this.surah,
+    required this.selected,
+    required this.selectionMode,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: const Color(0xFF222438),
+      color: selected ? const Color(0xFF1B3A1B) : const Color(0xFF222438),
       margin: const EdgeInsets.symmetric(vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: selected
+            ? const BorderSide(color: Color(0xFF2E7D32), width: 1.5)
+            : BorderSide.none,
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
+              if (selectionMode)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Icon(
+                    selected
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: selected
+                        ? const Color(0xFF2E7D32)
+                        : Colors.grey[600],
+                    size: 24,
+                  ),
+                ),
               Container(
                 width: 48,
                 height: 48,
@@ -200,10 +313,14 @@ class _SurahCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                surah.nameArabic,
-                style: const TextStyle(color: Color(0xFF2E7D32), fontSize: 20),
-              ),
+              if (!selectionMode)
+                Text(
+                  surah.nameArabic,
+                  style: const TextStyle(
+                    color: Color(0xFF2E7D32),
+                    fontSize: 20,
+                  ),
+                ),
             ],
           ),
         ),

@@ -158,7 +158,7 @@ class QuranApi {
     final response = await http
         .get(
           Uri.parse(
-            '$_baseUrl/verses/by_chapter/$surahId?language=id&translations=$_translationId&fields=text_imlaei,text_uthmani&audio=$recitationId',
+            '$_baseUrl/verses/by_chapter/$surahId?language=id&translations=$_translationId&fields=text_imlaei,text_uthmani&audio=$recitationId&limit=300',
           ),
         )
         .timeout(const Duration(seconds: 15));
