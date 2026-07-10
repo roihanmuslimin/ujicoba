@@ -32,9 +32,6 @@ class QuranApi {
     final List<dynamic> ayatList = data['ayat'] ?? [];
     final ayah = ayatList.map((json) => Ayah.fromJson(json)).toList();
 
-    return {
-      'surah': Surah.fromJson(data),
-      'ayat': ayah,
-    };
+    return {'surah': Surah.fromJson(data), 'ayat': ayah};
   }
 }

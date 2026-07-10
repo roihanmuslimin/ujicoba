@@ -11,6 +11,7 @@ class AudioService {
   PlayState _state = PlayState.stopped;
   double _progress = 0;
   Duration _duration = Duration.zero;
+  String? _currentUrl;
   StreamSubscription? _posSub;
   StreamSubscription? _stateSub;
   StreamSubscription? _durSub;
@@ -18,9 +19,12 @@ class AudioService {
   PlayState get state => _state;
   double get progress => _progress;
   Duration get duration => _duration;
+  String? get currentUrl => _currentUrl;
 
-  final StreamController<PlayState> _stateCtrl = StreamController<PlayState>.broadcast();
-  final StreamController<double> _progressCtrl = StreamController<double>.broadcast();
+  final StreamController<PlayState> _stateCtrl =
+      StreamController<PlayState>.broadcast();
+  final StreamController<double> _progressCtrl =
+      StreamController<double>.broadcast();
 
   Stream<PlayState> get stateStream => _stateCtrl.stream;
   Stream<double> get progressStream => _progressCtrl.stream;
@@ -35,6 +39,9 @@ class AudioService {
     _stateSub = _player.playerStateStream.listen((ps) {
       if (ps.processingState == ProcessingState.completed) {
         _setState(PlayState.stopped);
+      } else if (ps.processingState == ProcessingState.ready &&
+          _state == PlayState.loading) {
+        if (_player.playing) _setState(PlayState.playing);
       }
     });
     _durSub = _player.durationStream.listen((d) {
@@ -50,6 +57,8 @@ class AudioService {
   Future<void> play(String url) async {
     try {
       _setState(PlayState.loading);
+      _currentUrl = url;
+      await _player.stop();
       await _player.setUrl(url);
       await _player.play();
       _setState(PlayState.playing);
@@ -61,7 +70,23 @@ class AudioService {
   Future<void> playLocal(String path) async {
     try {
       _setState(PlayState.loading);
+      _currentUrl = path;
+      await _player.stop();
       await _player.setFilePath(path);
+      await _player.play();
+      _setState(PlayState.playing);
+    } catch (e) {
+      _setState(PlayState.error);
+    }
+  }
+
+  Future<void> playList(List<String> urls, {int startIndex = 0}) async {
+    try {
+      _setState(PlayState.loading);
+      await _player.stop();
+      final sources = urls.map((u) => AudioSource.uri(Uri.parse(u))).toList();
+      await _player.setAudioSource(ConcatenatingAudioSource(children: sources));
+      await _player.seek(Duration.zero, index: startIndex);
       await _player.play();
       _setState(PlayState.playing);
     } catch (e) {
@@ -91,24 +116,31 @@ class AudioService {
       final file = File(filePath);
       if (await file.exists()) return filePath;
 
-      final response = await httpGet(Uri.parse(url));
-      await file.writeAsBytes(response);
+      final bytes = await _httpGet(Uri.parse(url));
+      await file.writeAsBytes(bytes);
       return filePath;
     } catch (e) {
       return null;
     }
   }
 
-  Future<Uint8List> httpGet(Uri uri) async {
+  Future<Uint8List> _httpGet(Uri uri) async {
     final client = HttpClient();
     try {
       final request = await client.getUrl(uri);
       final response = await request.close();
-      final bytes = await response.fold<Uint8List>(
-        Uint8List(0),
-        (prev, chunk) => Uint8List.fromList([...prev, ...chunk]),
-      );
-      return bytes;
+      final chunks = <Uint8List>[];
+      await for (final chunk in response) {
+        chunks.add(chunk);
+      }
+      int total = chunks.fold(0, (sum, c) => sum + c.length);
+      final result = Uint8List(total);
+      int offset = 0;
+      for (final chunk in chunks) {
+        result.setRange(offset, offset + chunk.length, chunk);
+        offset += chunk.length;
+      }
+      return result;
     } finally {
       client.close();
     }

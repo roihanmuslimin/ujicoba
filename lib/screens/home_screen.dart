@@ -51,10 +51,18 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Al-Qur\'an',
-                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-            Text('Bacalah dengan nama Tuhanmu',
-                style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+            const Text(
+              'Al-Qur\'an',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              'Bacalah dengan nama Tuhanmu',
+              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+            ),
           ],
         ),
       ),
@@ -64,7 +72,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+      );
     }
 
     if (_error != null) {
@@ -76,8 +86,11 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Icon(Icons.wifi_off, color: Colors.red[300], size: 64),
               const SizedBox(height: 16),
-              Text(_error!, textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[300], fontSize: 16)),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[300], fontSize: 16),
+              ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _loadData,
@@ -86,7 +99,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6C63FF),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ],
@@ -104,9 +120,12 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: list.length,
         itemBuilder: (_, i) => _SurahCard(
           surah: list[i],
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => SurahDetailScreen(surah: list[i]),
-          )),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SurahDetailScreen(surah: list[i]),
+            ),
+          ),
         ),
       ),
     );
@@ -133,29 +152,48 @@ class _SurahCard extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 48, height: 48,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Center(child: Text('${surah.nomor}',
-                    style: const TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.bold, fontSize: 16))),
+                child: Center(
+                  child: Text(
+                    '${surah.nomor}',
+                    style: const TextStyle(
+                      color: Color(0xFF6C63FF),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(surah.namaLatin,
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text(
+                      surah.namaLatin,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('${surah.arti} \u2022 ${surah.jumlahAyat} Ayat \u2022 ${surah.tempatTurun}',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                    Text(
+                      '${surah.arti} \u2022 ${surah.jumlahAyat} Ayat \u2022 ${surah.tempatTurun}',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                    ),
                   ],
                 ),
               ),
-              Text(surah.nama,
-                  style: const TextStyle(color: Color(0xFF6C63FF), fontSize: 20)),
+              Text(
+                surah.nama,
+                style: const TextStyle(color: Color(0xFF6C63FF), fontSize: 20),
+              ),
             ],
           ),
         ),
