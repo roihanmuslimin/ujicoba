@@ -39,8 +39,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadQari();
-    _loadData();
+    _initAsync();
     _stateSub = _audio.stateStream.listen((s) {
       if (mounted) {
         setState(
@@ -62,6 +61,11 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
       }
     });
     _scrollCtrl.addListener(_onScroll);
+  }
+
+  Future<void> _initAsync() async {
+    await _loadQari();
+    if (mounted) _loadData();
   }
 
   void _onScroll() {
@@ -261,7 +265,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   Widget _buildBody() {
     if (_loading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+        child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
       );
     }
     if (_error != null) {
@@ -419,7 +423,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
           children: [
             const Icon(
               Icons.download_rounded,
-              color: Color(0xFF6C63FF),
+              color: Color(0xFF2E7D32),
               size: 40,
             ),
             const SizedBox(height: 16),
@@ -444,7 +448,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
                 minHeight: 8,
                 backgroundColor: Colors.grey[800],
                 valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF6C63FF),
+                  Color(0xFF2E7D32),
                 ),
               ),
             ),
@@ -477,7 +481,7 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF6C63FF), Color(0xFF8B7FFF)],
+          colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -542,7 +546,7 @@ class _AyahCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: isPlaying
-            ? const BorderSide(color: Color(0xFF6C63FF), width: 1.5)
+            ? const BorderSide(color: Color(0xFF2E7D32), width: 1.5)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -564,7 +568,7 @@ class _AyahCard extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6C63FF).withValues(alpha: 0.2),
+                        color: const Color(0xFF2E7D32).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Row(
@@ -572,14 +576,14 @@ class _AyahCard extends StatelessWidget {
                         children: [
                           Icon(
                             Icons.play_arrow,
-                            color: Color(0xFF6C63FF),
+                            color: Color(0xFF2E7D32),
                             size: 14,
                           ),
                           SizedBox(width: 4),
                           Text(
                             'Memutar',
                             style: TextStyle(
-                              color: Color(0xFF6C63FF),
+                              color: Color(0xFF2E7D32),
                               fontSize: 11,
                             ),
                           ),
@@ -633,15 +637,15 @@ class _VerseNumber extends StatelessWidget {
       height: 30,
       decoration: BoxDecoration(
         color: isActive
-            ? const Color(0xFF6C63FF)
-            : const Color(0xFF6C63FF).withValues(alpha: 0.12),
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFF2E7D32).withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Center(
         child: Text(
           '$nomor',
           style: TextStyle(
-            color: isActive ? Colors.white : const Color(0xFF6C63FF),
+            color: isActive ? Colors.white : const Color(0xFF2E7D32),
             fontSize: 11,
             fontWeight: FontWeight.bold,
           ),
@@ -697,7 +701,7 @@ class _AyahBottomSheet extends StatelessWidget {
                   icon: Icons.download_rounded,
                   label: 'Download & Putar',
                   subtitle: 'Download dulu, putar offline',
-                  color: const Color(0xFF6C63FF),
+                  color: const Color(0xFF2E7D32),
                   onTap: onPlayFromHere,
                 ),
               ),

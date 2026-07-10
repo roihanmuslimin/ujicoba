@@ -83,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBody() {
     if (_loading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+        child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
       );
     }
 
@@ -107,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Coba Lagi'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
+                  backgroundColor: const Color(0xFF2E7D32),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final list = _surahList!;
     return RefreshIndicator(
-      color: const Color(0xFF6C63FF),
+      color: const Color(0xFF2E7D32),
       onRefresh: _loadData,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -165,14 +165,14 @@ class _SurahCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
+                  color: const Color(0xFF2E7D32).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
                     '${surah.id}',
                     style: const TextStyle(
-                      color: Color(0xFF6C63FF),
+                      color: Color(0xFF2E7D32),
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -202,7 +202,7 @@ class _SurahCard extends StatelessWidget {
               ),
               Text(
                 surah.nameArabic,
-                style: const TextStyle(color: Color(0xFF6C63FF), fontSize: 20),
+                style: const TextStyle(color: Color(0xFF2E7D32), fontSize: 20),
               ),
             ],
           ),

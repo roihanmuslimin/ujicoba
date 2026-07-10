@@ -18,7 +18,7 @@ class QuranApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6C63FF),
+          seedColor: const Color(0xFF2E7D32),
           brightness: Brightness.dark,
         ),
         useMaterial3: true,

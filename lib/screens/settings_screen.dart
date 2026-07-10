@@ -88,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: _loading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+              child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
             )
           : ListView(
               padding: const EdgeInsets.all(16),
@@ -125,7 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         min: 16,
                         max: 40,
                         divisions: 24,
-                        activeColor: const Color(0xFF6C63FF),
+                        activeColor: const Color(0xFF2E7D32),
                         inactiveColor: Colors.grey[700],
                         onChanged: (v) => setState(() => _arabicSize = v),
                         onChangeEnd: (v) =>
@@ -164,7 +164,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         min: 10,
                         max: 28,
                         divisions: 18,
-                        activeColor: const Color(0xFF6C63FF),
+                        activeColor: const Color(0xFF2E7D32),
                         inactiveColor: Colors.grey[700],
                         onChanged: (v) => setState(() => _translationSize = v),
                         onChangeEnd: (v) =>
@@ -191,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     trailing: const Icon(
                       Icons.edit,
-                      color: Color(0xFF6C63FF),
+                      color: Color(0xFF2E7D32),
                       size: 20,
                     ),
                     onTap: _pickStorageFolder,
@@ -232,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isSelected
-                            ? const Color(0xFF6C63FF)
+                            ? const Color(0xFF2E7D32)
                             : Colors.grey[700],
                       ),
                       child: isSelected
@@ -261,7 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         isPreview
                             ? Icons.pause_circle_filled
                             : Icons.play_circle_outline,
-                        color: const Color(0xFF6C63FF),
+                        color: const Color(0xFF2E7D32),
                         size: 24,
                       ),
                       onPressed: () => _previewQariSample(entry.key),
@@ -345,12 +345,12 @@ class _SectionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, color: const Color(0xFF6C63FF), size: 18),
+                Icon(icon, color: const Color(0xFF2E7D32), size: 18),
                 const SizedBox(width: 8),
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Color(0xFF6C63FF),
+                    color: Color(0xFF2E7D32),
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -391,7 +391,7 @@ class _StorageOption extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF6C63FF), size: 24),
+            Icon(icon, color: const Color(0xFF2E7D32), size: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

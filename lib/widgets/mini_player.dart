@@ -102,7 +102,7 @@ class _MiniPlayerState extends State<MiniPlayer>
           ),
           Container(
             decoration: const BoxDecoration(
-              color: Color(0xFF6C63FF),
+              color: Color(0xFF2E7D32),
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -130,7 +130,7 @@ class _MiniPlayerState extends State<MiniPlayer>
             icon: Icon(
               Icons.repeat,
               color: _audio.loopMode
-                  ? const Color(0xFF6C63FF)
+                  ? const Color(0xFF2E7D32)
                   : Colors.grey[500],
               size: 22,
             ),
@@ -185,7 +185,7 @@ class _BarPainter extends CustomPainter {
     if (!isPlaying) return;
 
     final paint = Paint()
-      ..color = const Color(0xFF6C63FF).withValues(alpha: 0.8)
+      ..color = const Color(0xFF2E7D32).withValues(alpha: 0.8)
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
 
