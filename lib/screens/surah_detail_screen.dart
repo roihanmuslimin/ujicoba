@@ -69,11 +69,11 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
 
   void _ensureVisible(int verseIdx) {
     if (_manualScroll) return;
-    final key = _itemKeys[verseIdx];
-    if (key?.currentContext == null) return;
+    final ctx = _itemKeys[verseIdx]?.currentContext;
+    if (ctx == null) return;
 
     Scrollable.ensureVisible(
-      key.currentContext!,
+      ctx,
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeOut,
       alignment: 0.15,
