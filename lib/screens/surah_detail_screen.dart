@@ -65,14 +65,21 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   void _onScroll() {}
 
   void _ensureVisible(int verseIdx) {
-    final ctx = _itemKeys[verseIdx]?.currentContext;
-    if (ctx == null) return;
-    Scrollable.ensureVisible(
-      ctx,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOut,
-      alignment: 0.15,
-    );
+    final key = _itemKeys[verseIdx];
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+        alignment: 0.15,
+      );
+    } else if (_scrollCtrl.hasClients) {
+      _scrollCtrl.animateTo(
+        (verseIdx * 120.0).clamp(0.0, _scrollCtrl.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -119,13 +126,9 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
         _loading = false;
       });
       for (int i = 0; i < _ayatList!.length; i++) _itemKeys[i] = GlobalKey();
-      if (_audio.activeSurahId == widget.surah.id) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            final activeIdx = _activeVerseIndex;
-            if (activeIdx >= 0) _ensureVisible(activeIdx);
-          }
-        });
+      if (_audio.activeSurahId == widget.surah.id && mounted) {
+        final activeIdx = _activeVerseIndex;
+        if (activeIdx >= 0) _ensureVisible(activeIdx);
       }
     } catch (e) {
       setState(() {
