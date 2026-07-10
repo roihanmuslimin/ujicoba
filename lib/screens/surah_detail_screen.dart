@@ -10,14 +10,107 @@ import '../widgets/tajwid_text.dart';
 import '../widgets/mini_player.dart';
 
 class SurahDetailScreen extends StatefulWidget {
-  final Surah surah;
-  const SurahDetailScreen({super.key, required this.surah});
+  final List<Surah> allSurahs;
+  final int currentIndex;
+  const SurahDetailScreen({
+    super.key,
+    required this.allSurahs,
+    required this.currentIndex,
+  });
 
   @override
   State<SurahDetailScreen> createState() => _SurahDetailScreenState();
 }
 
 class _SurahDetailScreenState extends State<SurahDetailScreen> {
+  late PageController _pageCtrl;
+  late int _currentIdx;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIdx = widget.currentIndex;
+    _pageCtrl = PageController(initialPage: _currentIdx);
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  Surah get _currentSurah => widget.allSurahs[_currentIdx];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF131420),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF131420),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _currentSurah.nameSimple,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '${_currentIdx + 1} / ${widget.allSurahs.length}',
+              style: TextStyle(color: Colors.grey[500], fontSize: 11),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.stop_circle, color: Colors.white),
+            tooltip: 'Hentikan Audio',
+            onPressed: () => AudioService.instance.stop(),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: PageView.builder(
+              controller: _pageCtrl,
+              itemCount: widget.allSurahs.length,
+              onPageChanged: (idx) {
+                AudioService.instance.stop();
+                setState(() => _currentIdx = idx);
+              },
+              itemBuilder: (_, idx) {
+                return _SurahPage(
+                  surah: widget.allSurahs[idx],
+                );
+              },
+            ),
+          ),
+          MiniPlayer(onStop: () {}),
+        ],
+      ),
+    );
+  }
+}
+
+class _SurahPage extends StatefulWidget {
+  final Surah surah;
+  const _SurahPage({required this.surah});
+
+  @override
+  State<_SurahPage> createState() => _SurahPageState();
+}
+
+class _SurahPageState extends State<_SurahPage>
+    with AutomaticKeepAliveClientMixin {
   final QuranApi _api = QuranApi();
   final AudioService _audio = AudioService.instance;
   final ScrollController _scrollCtrl = ScrollController();
@@ -26,7 +119,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   String? _error;
   StreamSubscription? _stateSub;
   StreamSubscription? _indexSub;
-  bool _isPlaying = false;
   int _playStartOffset = 0;
   final Map<int, GlobalKey> _itemKeys = {};
   bool _manualScroll = false;
@@ -37,14 +129,15 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   double _translationFontSize = 14;
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
     _initAsync();
     _stateSub = _audio.stateStream.listen((s) {
       if (mounted) {
-        setState(
-          () => _isPlaying = s == PlayState.playing || s == PlayState.paused,
-        );
+        setState(() {});
         if (s == PlayState.stopped) {
           setState(() => _playStartOffset = 0);
         }
@@ -244,25 +337,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF131420),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF131420),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          widget.surah.nameSimple,
-          style: const TextStyle(color: Colors.white),
-        ),
-      ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
+    super.build(context);
     if (_loading) {
       return const Center(
         child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
@@ -328,7 +403,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
             },
           ),
         ),
-        MiniPlayer(onStop: () => setState(() => _playStartOffset = 0)),
       ],
     );
   }

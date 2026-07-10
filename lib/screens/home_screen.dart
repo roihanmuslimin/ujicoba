@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/surah.dart';
 import '../services/quran_api.dart';
-import '../services/settings_service.dart';
 import 'surah_detail_screen.dart';
 import 'settings_screen.dart';
 import 'download_screen.dart';
+import 'downloads_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -112,11 +112,22 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          if (!_selectionMode)
+          if (!_selectionMode) ...[
+            IconButton(
+              icon: const Icon(Icons.download_done_rounded,
+                  color: Colors.white),
+              tooltip: 'Unduhan',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DownloadsScreen()),
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.download_rounded, color: Colors.white),
+              tooltip: 'Pilih & Download',
               onPressed: () => setState(() => _selectionMode = true),
             ),
+          ],
           IconButton(
             icon: const Icon(Icons.settings_rounded, color: Colors.white),
             onPressed: () => Navigator.push(
@@ -212,7 +223,10 @@ class _HomeScreenState extends State<HomeScreen> {
               : () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => SurahDetailScreen(surah: list[i]),
+                    builder: (_) => SurahDetailScreen(
+                      allSurahs: list,
+                      currentIndex: i,
+                    ),
                   ),
                 ),
           onLongPress: !_selectionMode
