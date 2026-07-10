@@ -44,9 +44,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1B1D2B),
+      backgroundColor: const Color(0xFF131420),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1B1D2B),
+        backgroundColor: const Color(0xFF131420),
         elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

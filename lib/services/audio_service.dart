@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -49,18 +48,20 @@ class AudioService {
     _stateCtrl.add(s);
   }
 
-  Future<void> playUrl(String url) async {
+  Future<bool> playUrl(String url) async {
     try {
       _setState(PlayState.loading);
       await _player.setUrl(url);
       await _player.play();
       _setState(PlayState.playing);
+      return true;
     } catch (e) {
       _setState(PlayState.error);
+      return false;
     }
   }
 
-  Future<void> playList(List<String> urls, {int startIndex = 0}) async {
+  Future<bool> playList(List<String> urls, {int startIndex = 0}) async {
     try {
       _setState(PlayState.loading);
       await _player.stop();
@@ -69,8 +70,10 @@ class AudioService {
       await _player.seek(Duration.zero, index: startIndex);
       await _player.play();
       _setState(PlayState.playing);
+      return true;
     } catch (e) {
       _setState(PlayState.error);
+      return false;
     }
   }
 
@@ -86,7 +89,11 @@ class AudioService {
     _progressCtrl.add(0);
   }
 
-  Future<String?> downloadAudio(String url, String fileName) async {
+  Future<String?> downloadAudio(
+    String url,
+    String fileName, {
+    void Function(double progress)? onProgress,
+  }) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final saveDir = Directory('${dir.path}/quran_audio');
@@ -96,39 +103,42 @@ class AudioService {
       final file = File(filePath);
       if (await file.exists()) return filePath;
 
-      final bytes = await _httpGet(Uri.parse(url));
-      await file.writeAsBytes(bytes);
+      final client = HttpClient();
+      try {
+        final request = await client.getUrl(Uri.parse(url));
+        final response = await request.close();
+        final total = response.contentLength;
+        var received = 0;
+        final sink = file.openWrite();
+
+        await for (final chunk in response) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (total != null && total > 0 && onProgress != null) {
+            onProgress(received / total);
+          }
+        }
+        await sink.close();
+      } finally {
+        client.close();
+      }
+
       return filePath;
     } catch (e) {
       return null;
     }
   }
 
-  Future<Uint8List> _httpGet(Uri uri) async {
-    final client = HttpClient();
-    try {
-      final request = await client.getUrl(uri);
-      final response = await request.close();
-      final chunks = <List<int>>[];
-      await for (final chunk in response) {
-        chunks.add(chunk);
-      }
-      int total = chunks.fold(0, (sum, c) => sum + c.length);
-      final result = Uint8List(total);
-      int offset = 0;
-      for (final chunk in chunks) {
-        result.setRange(offset, offset + chunk.length, chunk);
-        offset += chunk.length;
-      }
-      return result;
-    } finally {
-      client.close();
-    }
-  }
-
   Future<bool> isDownloaded(String fileName) async {
     final dir = await getApplicationDocumentsDirectory();
     return File('${dir.path}/quran_audio/$fileName.mp3').exists();
+  }
+
+  Future<String?> getLocalPath(String fileName) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final path = '${dir.path}/quran_audio/$fileName.mp3';
+    if (await File(path).exists()) return path;
+    return null;
   }
 
   void dispose() {
