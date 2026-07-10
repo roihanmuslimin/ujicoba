@@ -119,7 +119,10 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
       _error = null;
     });
     try {
-      final data = await _api.getSurahDetail(widget.surah.id);
+      final data = await _api.getSurahDetail(
+        widget.surah.id,
+        recitationId: _selectedQari,
+      );
       setState(() {
         _ayatList = data['ayat'] as List<Ayah>;
         _loading = false;
@@ -136,6 +139,10 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   }
 
   String _ayahAudioUrl(int ayahNum) {
+    if (_ayatList != null && ayahNum >= 1 && ayahNum <= _ayatList!.length) {
+      final apiUrl = _ayatList![ayahNum - 1].audioUrl;
+      if (apiUrl.isNotEmpty) return apiUrl;
+    }
     return SettingsService.audioUrl(_selectedQari, widget.surah.id, ayahNum);
   }
 

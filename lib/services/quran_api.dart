@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../models/surah.dart';
 import '../models/ayah.dart';
@@ -7,7 +6,6 @@ import '../models/ayah.dart';
 class QuranApi {
   static const String _baseUrl = 'https://api.quran.com/api/v4';
   static const int _translationId = 33;
-  static const int _recitationId = 7;
 
   static const List<String> _latinNames = [
     '',
@@ -153,11 +151,14 @@ class QuranApi {
     return chapters.map((json) => Surah.fromJson(json)).toList();
   }
 
-  Future<Map<String, dynamic>> getSurahDetail(int surahId) async {
+  Future<Map<String, dynamic>> getSurahDetail(
+    int surahId, {
+    int recitationId = 7,
+  }) async {
     final response = await http
         .get(
           Uri.parse(
-            '$_baseUrl/verses/by_chapter/$surahId?language=id&translations=$_translationId&fields=text_imlaei,text_uthmani&audio=$_recitationId',
+            '$_baseUrl/verses/by_chapter/$surahId?language=id&translations=$_translationId&fields=text_imlaei,text_uthmani&audio=$recitationId',
           ),
         )
         .timeout(const Duration(seconds: 15));
@@ -212,6 +213,31 @@ class QuranApi {
     }).toList();
 
     return {'surah': surah, 'ayat': ayat};
+  }
+
+  Future<String> getVerseAudioUrl(
+    int surahId,
+    int verseNum,
+    int recitationId,
+  ) async {
+    try {
+      final resp = await http
+          .get(
+            Uri.parse(
+              '$_baseUrl/verses/by_chapter/$surahId?audio=$recitationId&limit=1',
+            ),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body);
+        final verses = data['verses'] as List?;
+        if (verses != null && verses.isNotEmpty) {
+          final url = verses[0]['audio']?['url'] ?? '';
+          if (url.isNotEmpty) return 'https://verses.quran.com/$url';
+        }
+      }
+    } catch (_) {}
+    return '';
   }
 
   String _getTransliteration(int surahId, int verseNum) {
