@@ -26,12 +26,12 @@ class _MiniPlayerState extends State<MiniPlayer>
   @override
   void initState() {
     super.initState();
-    _state = _audio.state;
+    _state = _audio.state == PlayState.loading ? PlayState.playing : _audio.state;
     _currentIndex = _audio.currentIndex;
     _totalItems = _audio.totalItems;
 
     _stateSub = _audio.stateStream.listen((s) {
-      if (mounted) setState(() => _state = s);
+      if (mounted && s != PlayState.loading) setState(() => _state = s);
     });
     _indexSub = _audio.indexStream.listen((idx) {
       if (mounted)
@@ -70,8 +70,7 @@ class _MiniPlayerState extends State<MiniPlayer>
 
     final isPlaying = _state == PlayState.playing;
     final isPaused = _state == PlayState.paused;
-    final isLoading = _state == PlayState.loading;
-    if (!(isPlaying || isPaused || isLoading)) return const SizedBox.shrink();
+    if (!(isPlaying || isPaused)) return const SizedBox.shrink();
 
     return Container(
       decoration: BoxDecoration(
@@ -107,13 +106,11 @@ class _MiniPlayerState extends State<MiniPlayer>
             ),
             child: IconButton(
               icon: Icon(
-                isLoading
-                    ? Icons.hourglass_top
-                    : (isPlaying ? Icons.pause : Icons.play_arrow),
+                isPlaying ? Icons.pause : Icons.play_arrow,
                 color: Colors.white,
                 size: 22,
               ),
-              onPressed: isLoading ? null : _togglePlayPause,
+              onPressed: _togglePlayPause,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             ),

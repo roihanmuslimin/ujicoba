@@ -19,6 +19,7 @@ class AudioService {
   int _totalItems = 0;
   bool _loopMode = false;
   String? _currentAyahUrl;
+  int? activeSurahId;
 
   PlayState get state => _state;
   double get progress => _progress;
@@ -169,6 +170,7 @@ class AudioService {
     _progress = 0;
     _currentIndex = null;
     _totalItems = 0;
+    activeSurahId = null;
     _indexCtrl.add(null);
     _progressCtrl.add(0);
   }

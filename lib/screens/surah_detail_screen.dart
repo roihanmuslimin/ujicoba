@@ -195,6 +195,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
 
     if (needDownload.isEmpty) {
       setState(() => _playStartOffset = startIndex);
+      _audio.activeSurahId = widget.surah.id;
       await _audio.playLocalList(localFiles);
       return;
     }
@@ -211,6 +212,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
           Navigator.of(ctx).pop();
           if (mounted) {
             setState(() => _playStartOffset = startIndex);
+            _audio.activeSurahId = widget.surah.id;
             await _audio.playLocalList(allPaths);
           }
         },

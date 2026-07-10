@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/surah.dart';
+import '../services/audio_service.dart';
 import 'surah_detail_screen.dart';
 
 class SurahReaderScreen extends StatefulWidget {
@@ -18,16 +20,29 @@ class SurahReaderScreen extends StatefulWidget {
 class _SurahReaderScreenState extends State<SurahReaderScreen> {
   late PageController _pageCtrl;
   late int _currentIndex;
+  final AudioService _audio = AudioService.instance;
+  StreamSubscription? _indexSub;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageCtrl = PageController(initialPage: _currentIndex);
+    _indexSub = _audio.indexStream.listen((idx) {
+      if (!mounted || idx == null) return;
+      final activeId = _audio.activeSurahId;
+      if (activeId == null) return;
+      final i = widget.surahs.indexWhere((s) => s.id == activeId);
+      if (i >= 0 && i != _currentIndex) {
+        _pageCtrl.animateToPage(i,
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _indexSub?.cancel();
     _pageCtrl.dispose();
     super.dispose();
   }
