@@ -40,7 +40,7 @@ class SettingsService {
       case 4:
         return 'shatri';
       case 5:
-        return 'Rifai';
+        return 'rifai';
       case 2:
         return 'abdul_baset';
       case 1:
@@ -62,5 +62,39 @@ class SettingsService {
       default:
         return 'Alafasy';
     }
+  }
+
+  static const _arabicSizeKey = 'font_size_arabic';
+  static const _translationSizeKey = 'font_size_translation';
+
+  static Future<double> getArabicFontSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_arabicSizeKey) ?? 24.0;
+  }
+
+  static Future<void> setArabicFontSize(double size) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_arabicSizeKey, size);
+  }
+
+  static Future<double> getTranslationFontSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_translationSizeKey) ?? 14.0;
+  }
+
+  static Future<void> setTranslationFontSize(double size) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_translationSizeKey, size);
+  }
+
+  static String audioUrl(int qariId, int surahNum, int ayahNum) {
+    final path = getQariPath(qariId);
+    final s = surahNum.toString().padLeft(3, '0');
+    final a = ayahNum.toString().padLeft(3, '0');
+    return 'https://verses.quran.com/$path/mp3/$s$a.mp3';
+  }
+
+  static String sampleUrl(int qariId) {
+    return audioUrl(qariId, 1, 1);
   }
 }

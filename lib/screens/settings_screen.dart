@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/settings_service.dart';
 import '../services/audio_service.dart';
@@ -12,9 +12,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _selectedQari = 7;
+  double _arabicSize = 24;
+  double _translationSize = 14;
   String _storagePath = '';
   bool _loading = true;
   late Map<int, String> _qariList;
+  int? _previewQari;
+  bool _previewPlaying = false;
 
   @override
   void initState() {
@@ -25,19 +29,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     _qariList = await SettingsService.getQariList();
     _selectedQari = await SettingsService.getQariId();
+    _arabicSize = await SettingsService.getArabicFontSize();
+    _translationSize = await SettingsService.getTranslationFontSize();
     _storagePath = await AudioService.instance.getDownloadDir();
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _pickFolder() async {
-    // On Android, we can use getExternalStorageDirectory
-    // For simplicity, toggle between internal and SD card
-    final current = await AudioService.instance.getDownloadDir();
-    final newPath = current.contains('Android')
-        ? '/storage/emulated/0/quran_audio'
-        : (await AudioService.instance.getDownloadDir());
-    await AudioService.instance.setDownloadDir(newPath);
-    setState(() => _storagePath = newPath);
+  Future<void> _previewQariSample(int qariId) async {
+    final url = SettingsService.sampleUrl(qariId);
+    setState(() {
+      _previewQari = qariId;
+      _previewPlaying = true;
+    });
+    final ok = await AudioService.instance.playUrl(url);
+    if (mounted) setState(() => _previewPlaying = !ok);
+    AudioService.instance.stateStream.listen((s) {
+      if (s == PlayState.stopped && mounted) {
+        setState(() {
+          _previewQari = null;
+          _previewPlaying = false;
+        });
+      }
+    }).cancel();
   }
 
   @override
@@ -67,10 +80,120 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     id: entry.key,
                     name: entry.value,
                     selected: _selectedQari == entry.key,
+                    previewing: _previewQari == entry.key && _previewPlaying,
                     onTap: () async {
                       await SettingsService.setQariId(entry.key);
                       setState(() => _selectedQari = entry.key);
                     },
+                    onPreview: () => _previewQariSample(entry.key),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+                _SectionHeader(label: 'Ukuran Teks Arab'),
+                const SizedBox(height: 8),
+                Card(
+                  color: const Color(0xFF1E2030),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.text_fields,
+                              color: Color(0xFF6C63FF),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_arabicSize.toInt()} pt',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              'بِسْمِ ٱللَّٰهِ',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: _arabicSize,
+                                fontFamily: 'UthmanicHafs',
+                              ),
+                            ),
+                          ],
+                        ),
+                        Slider(
+                          value: _arabicSize,
+                          min: 16,
+                          max: 40,
+                          divisions: 24,
+                          activeColor: const Color(0xFF6C63FF),
+                          inactiveColor: Colors.grey[700],
+                          onChanged: (v) => setState(() => _arabicSize = v),
+                          onChangeEnd: (v) =>
+                              SettingsService.setArabicFontSize(v),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                _SectionHeader(label: 'Ukuran Terjemahan'),
+                const SizedBox(height: 8),
+                Card(
+                  color: const Color(0xFF1E2030),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.translate,
+                              color: Color(0xFF6C63FF),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_translationSize.toInt()} pt',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              'Dengan nama Allah',
+                              style: TextStyle(
+                                color: Colors.grey[300],
+                                fontSize: _translationSize,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Slider(
+                          value: _translationSize,
+                          min: 10,
+                          max: 28,
+                          divisions: 18,
+                          activeColor: const Color(0xFF6C63FF),
+                          inactiveColor: Colors.grey[700],
+                          onChanged: (v) =>
+                              setState(() => _translationSize = v),
+                          onChangeEnd: (v) =>
+                              SettingsService.setTranslationFontSize(v),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
@@ -168,13 +291,17 @@ class _QariTile extends StatelessWidget {
   final int id;
   final String name;
   final bool selected;
+  final bool previewing;
   final VoidCallback onTap;
+  final VoidCallback onPreview;
 
   const _QariTile({
     required this.id,
     required this.name,
     required this.selected,
+    required this.previewing,
     required this.onTap,
+    required this.onPreview,
   });
 
   @override
@@ -196,9 +323,25 @@ class _QariTile extends StatelessWidget {
             fontSize: 14,
           ),
         ),
-        trailing: selected
-            ? const Icon(Icons.check_circle, color: Color(0xFF6C63FF), size: 20)
-            : null,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(
+                previewing ? Icons.pause_circle : Icons.play_circle_outline,
+                color: const Color(0xFF6C63FF),
+                size: 22,
+              ),
+              onPressed: onPreview,
+            ),
+            if (selected)
+              const Icon(
+                Icons.check_circle,
+                color: Color(0xFF6C63FF),
+                size: 20,
+              ),
+          ],
+        ),
         onTap: onTap,
       ),
     );

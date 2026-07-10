@@ -34,6 +34,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _loadQari();
     _loadData();
     _stateSub = _audio.stateStream.listen((s) {
       if (mounted) {
@@ -96,6 +97,22 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     return _playStartOffset + idx;
   }
 
+  int _selectedQari = 7;
+  double _arabicFontSize = 24;
+  double _translationFontSize = 14;
+
+  Future<void> _loadQari() async {
+    final id = await SettingsService.getQariId();
+    final arab = await SettingsService.getArabicFontSize();
+    final trans = await SettingsService.getTranslationFontSize();
+    if (mounted)
+      setState(() {
+        _selectedQari = id;
+        _arabicFontSize = arab;
+        _translationFontSize = trans;
+      });
+  }
+
   Future<void> _loadData() async {
     setState(() {
       _loading = true;
@@ -119,9 +136,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   }
 
   String _ayahAudioUrl(int ayahNum) {
-    final s = widget.surah.id.toString().padLeft(3, '0');
-    final a = ayahNum.toString().padLeft(3, '0');
-    return 'https://verses.quran.com/Alafasy/mp3/$s$a.mp3';
+    return SettingsService.audioUrl(_selectedQari, widget.surah.id, ayahNum);
   }
 
   void _showAyahOptions(int index) {
@@ -249,6 +264,8 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
                 key: _itemKeys[idx],
                 ayah: ayah,
                 isPlaying: activeIdx == idx,
+                arabicFontSize: _arabicFontSize,
+                translationFontSize: _translationFontSize,
                 onTap: () => _showAyahOptions(idx),
               );
             },
@@ -316,12 +333,16 @@ class _Header extends StatelessWidget {
 class _AyahCard extends StatelessWidget {
   final Ayah ayah;
   final bool isPlaying;
+  final double arabicFontSize;
+  final double translationFontSize;
   final VoidCallback onTap;
 
   const _AyahCard({
     super.key,
     required this.ayah,
     required this.isPlaying,
+    this.arabicFontSize = 24,
+    this.translationFontSize = 14,
     required this.onTap,
   });
 
@@ -380,7 +401,11 @@ class _AyahCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              TajwidText(text: ayah.arab, fontSize: 24, height: 1.8),
+              TajwidText(
+                text: ayah.arab,
+                fontSize: arabicFontSize,
+                height: 1.8,
+              ),
               if (ayah.terjemahan.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -394,7 +419,7 @@ class _AyahCard extends StatelessWidget {
                     ayah.terjemahan,
                     style: TextStyle(
                       color: Colors.grey[300],
-                      fontSize: 14,
+                      fontSize: translationFontSize,
                       height: 1.5,
                     ),
                   ),
