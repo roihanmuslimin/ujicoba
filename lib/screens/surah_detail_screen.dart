@@ -29,8 +29,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   bool _isPlaying = false;
   int _playStartOffset = 0;
   final Map<int, GlobalKey> _itemKeys = {};
-  bool _manualScroll = false;
-  Timer? _manualScrollTimer;
+
 
   int _selectedQari = 7;
   double _arabicFontSize = 24;
@@ -63,32 +62,22 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     if (mounted) _loadData();
   }
 
-  void _onScroll() {
-    if (!_scrollCtrl.hasClients) return;
-    _manualScroll = true;
-    _manualScrollTimer?.cancel();
-    _manualScrollTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) _manualScroll = false;
-    });
-  }
+  void _onScroll() {}
 
   void _ensureVisible(int verseIdx) {
-    if (_manualScroll || !_scrollCtrl.hasClients) return;
-    final key = _itemKeys[verseIdx];
-    if (key?.currentContext == null) return;
-    final box = key!.currentContext!.findRenderObject() as RenderBox?;
-    if (box == null || !box.attached) return;
-    final pos = box.localToGlobal(Offset.zero);
-    final size = MediaQuery.of(context).size;
-    final appBarH = kToolbarHeight + MediaQuery.of(context).padding.top + 56;
-    if (pos.dy < appBarH || pos.dy + box.size.height > size.height) {
-      final target = _scrollCtrl.offset + pos.dy - appBarH - 20;
-      _scrollCtrl.animateTo(
-        target.clamp(0.0, _scrollCtrl.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOut,
-      );
-    }
+    final ctx = _itemKeys[verseIdx]?.currentContext;
+    if (ctx == null) return;
+    final render = ctx.findRenderObject() as RenderBox?;
+    if (render == null || !render.attached) return;
+    final pos = render.localToGlobal(Offset.zero);
+    final screenW = MediaQuery.of(context).size.width;
+    if (pos.dx < -screenW * 0.5 || pos.dx > screenW * 1.5) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOut,
+      alignment: 0.15,
+    );
   }
 
   @override
@@ -97,7 +86,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     _indexSub?.cancel();
     _scrollCtrl.removeListener(_onScroll);
     _scrollCtrl.dispose();
-    _manualScrollTimer?.cancel();
     super.dispose();
   }
 
