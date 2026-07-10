@@ -73,15 +73,22 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   }
 
   void _ensureVisible(int verseIdx) {
-    if (_manualScroll) return;
-    final ctx = _itemKeys[verseIdx]?.currentContext;
-    if (ctx == null) return;
-    Scrollable.ensureVisible(
-      ctx,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOut,
-      alignment: 0.15,
-    );
+    if (_manualScroll || !_scrollCtrl.hasClients) return;
+    final key = _itemKeys[verseIdx];
+    if (key?.currentContext == null) return;
+    final box = key!.currentContext!.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return;
+    final pos = box.localToGlobal(Offset.zero);
+    final size = MediaQuery.of(context).size;
+    final appBarH = kToolbarHeight + MediaQuery.of(context).padding.top + 56;
+    if (pos.dy < appBarH || pos.dy + box.size.height > size.height) {
+      final target = _scrollCtrl.offset + pos.dy - appBarH - 20;
+      _scrollCtrl.animateTo(
+        target.clamp(0.0, _scrollCtrl.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/surah.dart';
+import '../services/audio_service.dart';
 import 'surah_detail_screen.dart';
 
 class SurahReaderScreen extends StatefulWidget {
@@ -120,7 +121,10 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
           Expanded(
             child: PageView.builder(
               controller: _pageCtrl,
-              onPageChanged: (i) => setState(() => _currentIndex = i),
+              onPageChanged: (i) {
+                AudioService.instance.stop();
+                setState(() => _currentIndex = i);
+              },
               itemCount: widget.surahs.length,
               itemBuilder: (_, i) => SurahDetailScreen(surah: widget.surahs[i]),
             ),
