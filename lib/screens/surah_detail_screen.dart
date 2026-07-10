@@ -10,105 +10,14 @@ import '../widgets/tajwid_text.dart';
 import '../widgets/mini_player.dart';
 
 class SurahDetailScreen extends StatefulWidget {
-  final List<Surah> allSurahs;
-  final int currentIndex;
-  const SurahDetailScreen({
-    super.key,
-    required this.allSurahs,
-    required this.currentIndex,
-  });
+  final Surah surah;
+  const SurahDetailScreen({super.key, required this.surah});
 
   @override
   State<SurahDetailScreen> createState() => _SurahDetailScreenState();
 }
 
 class _SurahDetailScreenState extends State<SurahDetailScreen> {
-  late PageController _pageCtrl;
-  late int _currentIdx;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentIdx = widget.currentIndex;
-    _pageCtrl = PageController(initialPage: _currentIdx);
-  }
-
-  @override
-  void dispose() {
-    _pageCtrl.dispose();
-    super.dispose();
-  }
-
-  Surah get _currentSurah => widget.allSurahs[_currentIdx];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF131420),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF131420),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _currentSurah.nameSimple,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              '${_currentIdx + 1} / ${widget.allSurahs.length}',
-              style: TextStyle(color: Colors.grey[500], fontSize: 11),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.stop_circle, color: Colors.white),
-            tooltip: 'Hentikan Audio',
-            onPressed: () => AudioService.instance.stop(),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: PageView.builder(
-              controller: _pageCtrl,
-              itemCount: widget.allSurahs.length,
-              onPageChanged: (idx) {
-                AudioService.instance.stop();
-                setState(() => _currentIdx = idx);
-              },
-              itemBuilder: (_, idx) {
-                return _SurahPage(surah: widget.allSurahs[idx]);
-              },
-            ),
-          ),
-          MiniPlayer(onStop: () {}),
-        ],
-      ),
-    );
-  }
-}
-
-class _SurahPage extends StatefulWidget {
-  final Surah surah;
-  const _SurahPage({required this.surah});
-
-  @override
-  State<_SurahPage> createState() => _SurahPageState();
-}
-
-class _SurahPageState extends State<_SurahPage>
-    with AutomaticKeepAliveClientMixin {
   final QuranApi _api = QuranApi();
   final AudioService _audio = AudioService.instance;
   final ScrollController _scrollCtrl = ScrollController();
@@ -117,6 +26,7 @@ class _SurahPageState extends State<_SurahPage>
   String? _error;
   StreamSubscription? _stateSub;
   StreamSubscription? _indexSub;
+  bool _isPlaying = false;
   int _playStartOffset = 0;
   final Map<int, GlobalKey> _itemKeys = {};
   bool _manualScroll = false;
@@ -127,28 +37,22 @@ class _SurahPageState extends State<_SurahPage>
   double _translationFontSize = 14;
 
   @override
-  bool get wantKeepAlive => true;
-
-  @override
   void initState() {
     super.initState();
     _initAsync();
     _stateSub = _audio.stateStream.listen((s) {
-      if (mounted) {
-        setState(() {});
-        if (s == PlayState.stopped) {
-          setState(() => _playStartOffset = 0);
-        }
-      }
+      if (mounted)
+        setState(
+          () => _isPlaying = s == PlayState.playing || s == PlayState.paused,
+        );
+      if (s == PlayState.stopped) setState(() => _playStartOffset = 0);
     });
     _indexSub = _audio.indexStream.listen((idx) {
       if (!mounted || _ayatList == null) return;
       setState(() {});
       if (idx != null) {
         final verseIdx = _playStartOffset + idx;
-        if (verseIdx < _ayatList!.length) {
-          _ensureVisible(verseIdx);
-        }
+        if (verseIdx < _ayatList!.length) _ensureVisible(verseIdx);
       }
     });
     _scrollCtrl.addListener(_onScroll);
@@ -222,9 +126,7 @@ class _SurahPageState extends State<_SurahPage>
         _ayatList = data['ayat'] as List<Ayah>;
         _loading = false;
       });
-      for (int i = 0; i < _ayatList!.length; i++) {
-        _itemKeys[i] = GlobalKey();
-      }
+      for (int i = 0; i < _ayatList!.length; i++) _itemKeys[i] = GlobalKey();
     } catch (e) {
       setState(() {
         _error = 'Gagal memuat ayat';
@@ -257,7 +159,6 @@ class _SurahPageState extends State<_SurahPage>
       ),
       builder: (ctx) => _AyahBottomSheet(
         ayah: ayah,
-        surahId: widget.surah.id,
         audioService: _audio,
         onPlayFromHere: () {
           Navigator.pop(ctx);
@@ -322,25 +223,44 @@ class _SurahPageState extends State<_SurahPage>
     );
   }
 
-  String _revelationPlace(String place) {
-    switch (place) {
-      case 'makkah':
-        return 'Makkiyah';
-      case 'madinah':
-        return 'Madaniyah';
-      default:
-        return place;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-    if (_loading) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF131420),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF131420),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.surah.nameSimple,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '${widget.surah.translatedName} \u2022 ${widget.surah.versesCount} Ayat',
+              style: TextStyle(color: Colors.grey[500], fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading)
       return const Center(
         child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
       );
-    }
     if (_error != null) {
       return Center(
         child: Column(
@@ -375,19 +295,7 @@ class _SurahPageState extends State<_SurahPage>
             ),
             itemCount: list.length + 1,
             itemBuilder: (_, i) {
-              if (i == 0) {
-                return Column(
-                  children: [
-                    _Header(
-                      surah: widget.surah,
-                      revelationPlace: _revelationPlace(
-                        widget.surah.revelationPlace,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                );
-              }
+              if (i == 0) return _Header(surah: widget.surah);
               final idx = i - 1;
               final ayah = list[idx];
               return _AyahCard(
@@ -401,6 +309,7 @@ class _SurahPageState extends State<_SurahPage>
             },
           ),
         ),
+        MiniPlayer(onStop: () => setState(() => _playStartOffset = 0)),
       ],
     );
   }
@@ -424,7 +333,6 @@ class _DownloadProgressDialog extends StatefulWidget {
   final int totalItems;
   final AudioService audioService;
   final void Function(List<String> allPaths) onComplete;
-
   const _DownloadProgressDialog({
     required this.items,
     required this.totalItems,
@@ -451,40 +359,31 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
   Future<void> _startDownload() async {
     final dir = await widget.audioService.getDownloadDir();
     final audioDir = '$dir/quran_audio';
-
     for (int i = 0; i < widget.items.length; i++) {
       if (!mounted) return;
       setState(() {
         _currentItem = i;
         _itemProgress = 0;
       });
-
-      final item = widget.items[i];
       await widget.audioService.downloadAudio(
-        item.url,
-        item.fileName,
+        widget.items[i].url,
+        widget.items[i].fileName,
         onProgress: (p) {
           if (mounted) setState(() => _itemProgress = p);
         },
       );
     }
-
     if (!mounted) return;
     setState(() => _downloading = false);
-
-    final allPaths = <String>[];
-    for (int i = 0; i < widget.items.length; i++) {
-      allPaths.add('$audioDir/${widget.items[i].fileName}.mp3');
-    }
-    widget.onComplete(allPaths);
+    widget.onComplete(
+      widget.items.map((e) => '$audioDir/${e.fileName}.mp3').toList(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final total = widget.items.length;
     final done = _currentItem + (_itemProgress >= 1 ? 1 : 0);
-    final overallProgress = total > 0 ? done / total : 0.0;
-
     return AlertDialog(
       backgroundColor: const Color(0xFF1E2030),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -516,7 +415,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
-                value: overallProgress,
+                value: total > 0 ? done / total : 0,
                 minHeight: 8,
                 backgroundColor: Colors.grey[800],
                 valueColor: const AlwaysStoppedAnimation<Color>(
@@ -526,13 +425,8 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
             ),
             const SizedBox(height: 8),
             Text(
-              '${(overallProgress * 100).toInt()}%',
+              '${total > 0 ? (done / total * 100).toInt() : 0}%',
               style: TextStyle(color: Colors.grey[500], fontSize: 12),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Ayat ini: ${(_itemProgress * 100).toInt()}%',
-              style: TextStyle(color: Colors.grey[600], fontSize: 11),
             ),
           ],
         ),
@@ -543,8 +437,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
 
 class _Header extends StatelessWidget {
   final Surah surah;
-  final String revelationPlace;
-  const _Header({required this.surah, required this.revelationPlace});
+  const _Header({required this.surah});
 
   @override
   Widget build(BuildContext context) {
@@ -582,7 +475,7 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${surah.translatedName} \u2022 ${surah.versesCount} Ayat \u2022 $revelationPlace',
+            '${surah.versesCount} Ayat',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.7),
               fontSize: 14,
@@ -600,7 +493,6 @@ class _AyahCard extends StatelessWidget {
   final double arabicFontSize;
   final double translationFontSize;
   final VoidCallback onTap;
-
   const _AyahCard({
     super.key,
     required this.ayah,
@@ -613,7 +505,7 @@ class _AyahCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: isPlaying ? const Color(0xFF2E3040) : const Color(0xFF1A1C2A),
+      color: isPlaying ? const Color(0xFF1B3A1B) : const Color(0xFF1A1C2A),
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
@@ -729,13 +621,10 @@ class _VerseNumber extends StatelessWidget {
 
 class _AyahBottomSheet extends StatelessWidget {
   final Ayah ayah;
-  final int surahId;
   final AudioService audioService;
   final VoidCallback onPlayFromHere;
-
   const _AyahBottomSheet({
     required this.ayah,
-    required this.surahId,
     required this.audioService,
     required this.onPlayFromHere,
   });
@@ -756,16 +645,14 @@ class _AyahBottomSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-
           TajwidText(text: ayah.arab, fontSize: 26, height: 1.6),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             ayah.terjemahan,
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey[400], fontSize: 13),
           ),
           const SizedBox(height: 24),
-
           Row(
             children: [
               Expanded(
@@ -801,7 +688,6 @@ class _ActionButton extends StatelessWidget {
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
-
   const _ActionButton({
     required this.icon,
     required this.label,

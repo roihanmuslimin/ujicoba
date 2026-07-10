@@ -122,8 +122,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
               controller: _pageCtrl,
               onPageChanged: (i) => setState(() => _currentIndex = i),
               itemCount: widget.surahs.length,
-              itemBuilder: (_, i) =>
-                  SurahDetailScreen(allSurahs: widget.surahs, currentIndex: i),
+              itemBuilder: (_, i) => SurahDetailScreen(surah: widget.surahs[i]),
             ),
           ),
         ],
