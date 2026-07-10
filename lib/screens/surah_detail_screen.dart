@@ -49,7 +49,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     _indexSub = _audio.indexStream.listen((idx) {
       if (!mounted || _ayatList == null) return;
       setState(() {});
-      if (idx != null) {
+      if (idx != null && _audio.activeSurahId == widget.surah.id) {
         final verseIdx = _playStartOffset + idx;
         if (verseIdx < _ayatList!.length) _ensureVisible(verseIdx);
       }
@@ -67,11 +67,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   void _ensureVisible(int verseIdx) {
     final ctx = _itemKeys[verseIdx]?.currentContext;
     if (ctx == null) return;
-    final render = ctx.findRenderObject() as RenderBox?;
-    if (render == null || !render.attached) return;
-    final pos = render.localToGlobal(Offset.zero);
-    final screenW = MediaQuery.of(context).size.width;
-    if (pos.dx < -screenW * 0.5 || pos.dx > screenW * 1.5) return;
     Scrollable.ensureVisible(
       ctx,
       duration: const Duration(milliseconds: 400),
