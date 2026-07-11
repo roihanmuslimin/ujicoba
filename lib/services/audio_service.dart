@@ -20,6 +20,7 @@ class AudioService {
   bool _loopMode = false;
   String? _currentAyahUrl;
   int? activeSurahId;
+  bool _preserveOnComplete = false;
   List<String>? _lastPlaylist;
   int? _lastSurahId;
 
@@ -54,7 +55,7 @@ class AudioService {
         if (_loopMode && _totalItems > 0) {
           _player.seek(Duration.zero, index: 0);
           _player.play();
-        } else {
+        } else if (!_preserveOnComplete) {
           _setState(PlayState.stopped);
           _progress = 0;
           _currentIndex = null;
@@ -120,6 +121,26 @@ class AudioService {
     } catch (e) {
       _setState(PlayState.error);
       return false;
+    }
+  }
+
+  Future<void> playLocalFile(String path, {bool preserveOnComplete = false}) async {
+    try {
+      _preserveOnComplete = preserveOnComplete;
+      _setState(PlayState.loading);
+      await _player.stop();
+      _totalItems = 1;
+      await _player.setAudioSource(AudioSource.file(path));
+      _currentIndex = 0;
+      _indexCtrl.add(0);
+      await _player.play();
+      _setState(PlayState.playing);
+      await _player.processingStateStream.firstWhere(
+        (s) => s == ProcessingState.completed,
+      ).timeout(const Duration(seconds: 30), onTimeout: () => ProcessingState.completed);
+      if (preserveOnComplete) _preserveOnComplete = false;
+    } catch (e) {
+      _setState(PlayState.error);
     }
   }
 
