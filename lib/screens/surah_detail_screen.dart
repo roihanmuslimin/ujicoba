@@ -399,10 +399,12 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
 
   Future<void> _startDownload() async {
     for (int i = 0; i < widget.items.length; i++) {
-      setState(() {
-        _currentItem = i;
-        _itemProgress = 0;
-      });
+      if (mounted) {
+        setState(() {
+          _currentItem = i;
+          _itemProgress = 0;
+        });
+      }
       await widget.audioService.downloadAudio(
         widget.items[i].url,
         widget.items[i].fileName,
@@ -411,7 +413,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
         },
       );
     }
-    setState(() => _downloading = false);
+    if (mounted) setState(() => _downloading = false);
     widget.onComplete();
   }
 

@@ -225,6 +225,22 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const Spacer(flex: 2),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Column(
+                children: [
+                  Text(
+                    'Audio oleh everyayah.com',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Data terjemahan oleh Quran.com API',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
