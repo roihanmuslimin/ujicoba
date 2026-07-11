@@ -469,42 +469,34 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      padding: const EdgeInsets.only(top: 16, bottom: 20),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFF2E7D32), width: 1.5)),
       ),
       child: Column(
         children: [
           Text(
-            surah.nameArabic,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
             surah.nameSimple,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 18,
+            style: const TextStyle(
+              color: Color(0xFF2E7D32),
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            '${surah.versesCount} Ayat',
+            surah.nameArabic,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.7),
               fontSize: 14,
+            ),
+          ),
+          Text(
+            '${surah.versesCount} Ayat',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.35),
+              fontSize: 12,
             ),
           ),
         ],
