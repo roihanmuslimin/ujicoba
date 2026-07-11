@@ -51,7 +51,12 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
       setState(() {});
       if (idx != null && _audio.activeSurahId == widget.surah.id) {
         final verseIdx = _playStartOffset + idx;
-        if (verseIdx < _ayatList!.length) _ensureVisible(verseIdx);
+        if (verseIdx < _ayatList!.length) {
+          _ensureVisible(verseIdx);
+          Future.delayed(const Duration(milliseconds: 350), () {
+            if (mounted) _ensureVisible(verseIdx);
+          });
+        }
       }
     });
     _scrollCtrl.addListener(_onScroll);
@@ -69,17 +74,33 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     if (key?.currentContext != null) {
       Scrollable.ensureVisible(
         key!.currentContext!,
-        duration: const Duration(milliseconds: 400),
+        duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
         alignment: 0.15,
       );
-    } else if (_scrollCtrl.hasClients) {
-      _scrollCtrl.animateTo(
-        (verseIdx * 120.0).clamp(0.0, _scrollCtrl.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOut,
-      );
+      return;
     }
+    if (!_scrollCtrl.hasClients) return;
+    final est = 116.0 + _arabicFontSize * 1.8 + _translationFontSize * 1.5;
+    _scrollCtrl.animateTo(
+      (verseIdx * est).clamp(0.0, _scrollCtrl.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    ).then((_) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final k = _itemKeys[verseIdx];
+        if (k?.currentContext != null) {
+          Scrollable.ensureVisible(
+            k!.currentContext!,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            alignment: 0.15,
+          );
+        }
+      });
+    });
   }
 
   @override
