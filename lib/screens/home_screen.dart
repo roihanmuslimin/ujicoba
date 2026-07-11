@@ -225,22 +225,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const Spacer(flex: 2),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                children: [
-                  Text(
-                    'Audio oleh everyayah.com',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Data terjemahan oleh Quran.com API',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -318,21 +302,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     : null,
               ),
             ),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: Colors.grey[800]!, width: 0.5)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'everyayah.com',
-                style: TextStyle(color: Colors.grey[600], fontSize: 11),
-              ),
-            ],
           ),
         ),
       ],

@@ -177,14 +177,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     return SettingsService.audioUrl(_selectedQari, widget.surah.id, ayahNum);
   }
 
-  String _bismillahUrl() {
-    return 'https://everyayah.com/data/${SettingsService.getQariPath(_selectedQari)}/bismillah.mp3';
-  }
-
-  String _bismillahFileName() {
-    return '${SettingsService.getQariPath(_selectedQari)}_000_000';
-  }
-
   String _audioFileName(int ayahNum) {
     final s = widget.surah.id.toString().padLeft(3, '0');
     final a = ayahNum.toString().padLeft(3, '0');
@@ -222,12 +214,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     List<String> localFiles = [];
     List<_DownloadItem> needDownload = [];
 
-    bool hasBismillah = startIndex == 0 && widget.surah.id != 1 && widget.surah.id != 9;
-    String? bismillahPath;
-    if (hasBismillah) {
-      bismillahPath = '${audioDir.path}/${_bismillahFileName()}.mp3';
-    }
-
     for (int i = 0; i < ayat.length; i++) {
       final ayah = ayat[i];
       final fileName = _audioFileName(ayah.nomor);
@@ -247,43 +233,31 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
       }
     }
 
-    if (hasBismillah && bismillahPath != null) {
-      if (!await File(bismillahPath).exists()) {
-        needDownload.add(_DownloadItem(
-          index: -1, ayahNum: 0, url: _bismillahUrl(), fileName: _bismillahFileName(),
-        ));
-      }
-    }
-
-    void playBismillahThenVerses() async {
+    void playVerses() {
       setState(() {
         _playStartOffset = startIndex;
         _isSurahDownloaded = true;
       });
       _audio.activeSurahId = widget.surah.id;
-      if (bismillahPath != null && hasBismillah) {
-        await _audio.playLocalFile(bismillahPath, preserveOnComplete: true);
-      }
       _audio.playLocalList(localFiles);
     }
 
     if (needDownload.isEmpty) {
-      playBismillahThenVerses();
+      playVerses();
       return;
     }
 
     if (!mounted) return;
-    await showDialog(
+    showDialog(
       barrierDismissible: false,
       context: context,
       builder: (ctx) => _DownloadProgressDialog(
         items: needDownload,
         totalItems: ayat.length,
         audioService: _audio,
-        onComplete: (allPaths) async {
-          Navigator.of(ctx).pop();
+        onComplete: () {
           if (mounted) {
-            playBismillahThenVerses();
+            playVerses();
           }
         },
       ),
@@ -399,7 +373,7 @@ class _DownloadProgressDialog extends StatefulWidget {
   final List<_DownloadItem> items;
   final int totalItems;
   final AudioService audioService;
-  final void Function(List<String> allPaths) onComplete;
+  final VoidCallback onComplete;
   const _DownloadProgressDialog({
     required this.items,
     required this.totalItems,
@@ -424,10 +398,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
   }
 
   Future<void> _startDownload() async {
-    final dir = await widget.audioService.getDownloadDir();
-    final audioDir = '$dir/quran_audio';
     for (int i = 0; i < widget.items.length; i++) {
-      if (!mounted) return;
       setState(() {
         _currentItem = i;
         _itemProgress = 0;
@@ -440,11 +411,8 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
         },
       );
     }
-    if (!mounted) return;
     setState(() => _downloading = false);
-    widget.onComplete(
-      widget.items.map((e) => '$audioDir/${e.fileName}.mp3').toList(),
-    );
+    widget.onComplete();
   }
 
   @override
@@ -456,44 +424,56 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: SizedBox(
         width: 280,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
           children: [
-            const Icon(
-              Icons.download_rounded,
-              color: Color(0xFF2E7D32),
-              size: 40,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _downloading ? 'Mengunduh...' : 'Selesai!',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Ayat ${_currentItem + 1} dari $total',
-              style: TextStyle(color: Colors.grey[400], fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: total > 0 ? done / total : 0,
-                minHeight: 8,
-                backgroundColor: Colors.grey[800],
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF2E7D32),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.download_rounded,
+                  color: Color(0xFF2E7D32),
+                  size: 40,
                 ),
-              ),
+                const SizedBox(height: 16),
+                Text(
+                  _downloading ? 'Mengunduh...' : 'Selesai!',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Ayat ${_currentItem + 1} dari $total',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: total > 0 ? done / total : 0,
+                    minHeight: 8,
+                    backgroundColor: Colors.grey[800],
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFF2E7D32),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${total > 0 ? (done / total * 100).toInt() : 0}%',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${total > 0 ? (done / total * 100).toInt() : 0}%',
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            Positioned(
+              top: -8,
+              right: -8,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             ),
           ],
         ),
