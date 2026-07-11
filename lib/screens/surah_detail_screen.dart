@@ -28,6 +28,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   StreamSubscription? _indexSub;
   bool _isPlaying = false;
   int _playStartOffset = 0;
+  bool _hasBismillah = false;
   final Map<int, GlobalKey> _itemKeys = {};
 
 
@@ -44,19 +45,17 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
         setState(
           () => _isPlaying = s == PlayState.playing || s == PlayState.paused,
         );
-      if (s == PlayState.stopped) setState(() => _playStartOffset = 0);
+      if (s == PlayState.stopped) setState(() { _playStartOffset = 0; _hasBismillah = false; });
     });
     _indexSub = _audio.indexStream.listen((idx) {
       if (!mounted || _ayatList == null) return;
       setState(() {});
-      if (idx != null && _audio.activeSurahId == widget.surah.id) {
-        final verseIdx = _playStartOffset + idx;
-        if (verseIdx < _ayatList!.length) {
-          _ensureVisible(verseIdx);
-          Future.delayed(const Duration(milliseconds: 350), () {
-            if (mounted) _ensureVisible(verseIdx);
-          });
-        }
+      final activeIdx = _activeVerseIndex;
+      if (activeIdx >= 0 && activeIdx < _ayatList!.length) {
+        _ensureVisible(activeIdx);
+        Future.delayed(const Duration(milliseconds: 350), () {
+          if (mounted) _ensureVisible(activeIdx);
+        });
       }
     });
     _scrollCtrl.addListener(_onScroll);
@@ -117,6 +116,10 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     if (_audio.activeSurahId != widget.surah.id) return -1;
     final idx = _audio.currentIndex;
     if (idx == null) return -1;
+    if (_hasBismillah) {
+      if (idx == 0) return _playStartOffset;
+      return _playStartOffset + idx - 1;
+    }
     return _playStartOffset + idx;
   }
 
@@ -163,6 +166,14 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     return SettingsService.audioUrl(_selectedQari, widget.surah.id, ayahNum);
   }
 
+  String _bismillahUrl() {
+    return 'https://everyayah.com/data/${SettingsService.getQariPath(_selectedQari)}/bismillah.mp3';
+  }
+
+  String _bismillahFileName() {
+    return '${SettingsService.getQariPath(_selectedQari)}_000_000';
+  }
+
   String _audioFileName(int ayahNum) {
     final s = widget.surah.id.toString().padLeft(3, '0');
     final a = ayahNum.toString().padLeft(3, '0');
@@ -199,6 +210,12 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     List<String> localFiles = [];
     List<_DownloadItem> needDownload = [];
 
+    bool hasBismillah = startIndex == 0 && widget.surah.id != 1 && widget.surah.id != 9;
+    String? bismillahPath;
+    if (hasBismillah) {
+      bismillahPath = '${audioDir.path}/${_bismillahFileName()}.mp3';
+    }
+
     for (int i = 0; i < ayat.length; i++) {
       final ayah = ayat[i];
       final fileName = _audioFileName(ayah.nomor);
@@ -218,10 +235,28 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
       }
     }
 
-    if (needDownload.isEmpty) {
-      setState(() => _playStartOffset = startIndex);
+    if (hasBismillah && bismillahPath != null) {
+      if (await File(bismillahPath).exists()) {
+        localFiles.insert(0, bismillahPath);
+      } else {
+        final url = _bismillahUrl();
+        final fn = _bismillahFileName();
+        needDownload.insert(0, _DownloadItem(index: -1, ayahNum: 0, url: url, fileName: fn));
+        localFiles.insert(0, bismillahPath);
+      }
+    }
+
+    void playWithBismillah(List<String> paths, {bool hasB = false}) {
+      setState(() {
+        _playStartOffset = startIndex;
+        _hasBismillah = hasB;
+      });
       _audio.activeSurahId = widget.surah.id;
-      await _audio.playLocalList(localFiles);
+      _audio.playLocalList(paths);
+    }
+
+    if (needDownload.isEmpty) {
+      playWithBismillah(localFiles, hasB: hasBismillah && bismillahPath != null);
       return;
     }
 
@@ -236,9 +271,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
         onComplete: (allPaths) async {
           Navigator.of(ctx).pop();
           if (mounted) {
-            setState(() => _playStartOffset = startIndex);
-            _audio.activeSurahId = widget.surah.id;
-            await _audio.playLocalList(allPaths);
+            playWithBismillah(allPaths, hasB: hasBismillah && bismillahPath != null);
           }
         },
       ),
@@ -667,28 +700,15 @@ class _AyahBottomSheet extends StatelessWidget {
             style: TextStyle(color: Colors.grey[400], fontSize: 13),
           ),
           const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.download_rounded,
-                  label: 'Download & Putar',
-                  subtitle: 'Download dulu, putar offline',
-                  color: const Color(0xFF2E7D32),
-                  onTap: onPlayFromHere,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.menu_book_rounded,
-                  label: 'Hanya Baca',
-                  subtitle: 'Lihat ayat tanpa audio',
-                  color: Colors.grey[600]!,
-                  onTap: () => Navigator.pop(context),
-                ),
-              ),
-            ],
+          SizedBox(
+            width: double.infinity,
+            child: _ActionButton(
+              icon: Icons.download_rounded,
+              label: 'Download & Putar',
+              subtitle: 'Download dulu, putar offline',
+              color: const Color(0xFF2E7D32),
+              onTap: onPlayFromHere,
+            ),
           ),
         ],
       ),

@@ -20,6 +20,8 @@ class AudioService {
   bool _loopMode = false;
   String? _currentAyahUrl;
   int? activeSurahId;
+  List<String>? _lastPlaylist;
+  int? _lastSurahId;
 
   PlayState get state => _state;
   double get progress => _progress;
@@ -54,6 +56,11 @@ class AudioService {
           _player.play();
         } else {
           _setState(PlayState.stopped);
+          _progress = 0;
+          _currentIndex = null;
+          _totalItems = 0;
+          _indexCtrl.add(null);
+          _progressCtrl.add(0);
         }
       }
     });
@@ -124,6 +131,8 @@ class AudioService {
       _setState(PlayState.loading);
       await _player.stop();
       _totalItems = filePaths.length;
+      _lastPlaylist = filePaths;
+      _lastSurahId = activeSurahId;
       final sources = filePaths.map((p) => AudioSource.file(p)).toList();
       await _player.setAudioSource(ConcatenatingAudioSource(children: sources));
       await _player.seek(Duration.zero, index: startIndex);
@@ -164,15 +173,21 @@ class AudioService {
     _setState(PlayState.playing);
   }
 
-  Future<void> stop() async {
+  Future<void> stop({bool preserveSurah = false}) async {
     await _player.stop();
     _setState(PlayState.stopped);
     _progress = 0;
     _currentIndex = null;
     _totalItems = 0;
-    activeSurahId = null;
+    if (!preserveSurah) activeSurahId = null;
     _indexCtrl.add(null);
     _progressCtrl.add(0);
+  }
+
+  Future<void> replay() async {
+    if (_lastPlaylist == null || _lastPlaylist!.isEmpty) return;
+    activeSurahId = _lastSurahId;
+    await playLocalList(_lastPlaylist!);
   }
 
   Future<String> getDownloadDir() async {

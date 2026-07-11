@@ -61,16 +61,18 @@ class _MiniPlayerState extends State<MiniPlayer>
       _audio.pause();
     } else if (_state == PlayState.paused) {
       _audio.resume();
+    } else if (_state == PlayState.stopped) {
+      _audio.replay();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_state == PlayState.stopped) return const SizedBox.shrink();
-
     final isPlaying = _state == PlayState.playing;
     final isPaused = _state == PlayState.paused;
-    if (!(isPlaying || isPaused)) return const SizedBox.shrink();
+    final isStopped = _state == PlayState.stopped;
+    final isVisible = isPlaying || isPaused || isStopped;
+    if (!isVisible) return const SizedBox.shrink();
 
     return Container(
       decoration: BoxDecoration(
@@ -81,24 +83,28 @@ class _MiniPlayerState extends State<MiniPlayer>
       child: Row(
         children: [
           _VisualizerBars(phase: _visualPhase, isPlaying: isPlaying),
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
           Text(
-            _currentIndex != null ? 'Ayat ${_currentIndex! + 1}' : '',
+            isStopped
+                ? 'Selesai'
+                : (_currentIndex != null ? 'Ayat ${_currentIndex! + 1}' : ''),
             style: TextStyle(color: Colors.grey[400], fontSize: 12),
           ),
           const Spacer(),
-          IconButton(
-            icon: const Icon(
-              Icons.skip_previous,
-              color: Colors.white,
-              size: 22,
+          if (!isStopped) ...[
+            IconButton(
+              icon: const Icon(
+                Icons.skip_previous,
+                color: Colors.white,
+                size: 22,
+              ),
+              onPressed: _currentIndex != null && _currentIndex! > 0
+                  ? () => _audio.previous()
+                  : null,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             ),
-            onPressed: _currentIndex != null && _currentIndex! > 0
-                ? () => _audio.previous()
-                : null,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          ),
+          ],
           Container(
             decoration: const BoxDecoration(
               color: Color(0xFF2E7D32),
@@ -106,7 +112,7 @@ class _MiniPlayerState extends State<MiniPlayer>
             ),
             child: IconButton(
               icon: Icon(
-                isPlaying ? Icons.pause : Icons.play_arrow,
+                isStopped ? Icons.replay : (isPlaying ? Icons.pause : Icons.play_arrow),
                 color: Colors.white,
                 size: 22,
               ),
@@ -115,38 +121,40 @@ class _MiniPlayerState extends State<MiniPlayer>
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.skip_next, color: Colors.white, size: 22),
-            onPressed: _currentIndex != null && _currentIndex! + 1 < _totalItems
-                ? () => _audio.next()
-                : null,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.repeat,
-              color: _audio.loopMode
-                  ? const Color(0xFF2E7D32)
-                  : Colors.grey[500],
-              size: 22,
+          if (!isStopped) ...[
+            IconButton(
+              icon: const Icon(Icons.skip_next, color: Colors.white, size: 22),
+              onPressed: _currentIndex != null && _currentIndex! + 1 < _totalItems
+                  ? () => _audio.next()
+                  : null,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             ),
-            onPressed: () {
-              _audio.toggleLoop();
-              setState(() {});
-            },
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          ),
-          IconButton(
-            icon: const Icon(Icons.stop, color: Colors.white, size: 22),
-            onPressed: () {
-              _audio.stop();
-              widget.onStop?.call();
-            },
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          ),
+            IconButton(
+              icon: Icon(
+                Icons.repeat,
+                color: _audio.loopMode
+                    ? const Color(0xFF2E7D32)
+                    : Colors.grey[500],
+                size: 22,
+              ),
+              onPressed: () {
+                _audio.toggleLoop();
+                setState(() {});
+              },
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            ),
+            IconButton(
+              icon: const Icon(Icons.stop, color: Colors.white, size: 22),
+              onPressed: () {
+                _audio.stop();
+                widget.onStop?.call();
+              },
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            ),
+          ],
         ],
       ),
     );
