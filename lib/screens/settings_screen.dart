@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/settings_service.dart';
 import '../services/audio_service.dart';
-import '../services/quran_api.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -60,9 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     });
 
-    final api = QuranApi();
-    String url = await api.getVerseAudioUrl(1, 1, qariId);
-    if (url.isEmpty) url = SettingsService.sampleUrl(qariId);
+    String url = SettingsService.sampleUrl(qariId);
 
     final ok = await AudioService.instance.playUrl(url);
     if (!ok && mounted) {

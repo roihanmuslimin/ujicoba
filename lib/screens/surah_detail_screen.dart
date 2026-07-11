@@ -160,10 +160,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   }
 
   String _ayahAudioUrl(int ayahNum) {
-    if (_ayatList != null && ayahNum >= 1 && ayahNum <= _ayatList!.length) {
-      final apiUrl = _ayatList![ayahNum - 1].audioUrl;
-      if (apiUrl.isNotEmpty) return apiUrl;
-    }
     return SettingsService.audioUrl(_selectedQari, widget.surah.id, ayahNum);
   }
 

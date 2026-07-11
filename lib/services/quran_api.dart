@@ -215,31 +215,6 @@ class QuranApi {
     return {'surah': surah, 'ayat': ayat};
   }
 
-  Future<String> getVerseAudioUrl(
-    int surahId,
-    int verseNum,
-    int recitationId,
-  ) async {
-    try {
-      final resp = await http
-          .get(
-            Uri.parse(
-              '$_baseUrl/verses/by_chapter/$surahId?audio=$recitationId&limit=1',
-            ),
-          )
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body);
-        final verses = data['verses'] as List?;
-        if (verses != null && verses.isNotEmpty) {
-          final url = verses[0]['audio']?['url'] ?? '';
-          if (url.isNotEmpty) return 'https://verses.quran.com/$url';
-        }
-      }
-    } catch (_) {}
-    return '';
-  }
-
   String _getTransliteration(int surahId, int verseNum) {
     return '';
   }

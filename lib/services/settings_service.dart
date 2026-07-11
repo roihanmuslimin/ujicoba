@@ -15,52 +15,42 @@ class SettingsService {
 
   static Future<Map<int, String>> getQariList() async {
     return {
-      7: 'Mishari Rashid Al-Afasy',
-      3: 'Abdur-Rahman as-Sudais',
-      4: 'Abu Bakr al-Shatri',
-      5: 'Hani ar-Rifai',
-      2: 'AbdulBaset AbdulSamad (Murattal)',
-      1: 'AbdulBaset AbdulSamad (Mujawwad)',
-      8: 'Sa\'ud ash-Shuraym',
-      9: 'Yasser ad-Dussary',
-      10: 'Muhammad al-Luhaidan',
-      12: 'Maher al-Mu\'ayqili',
-      13: 'Salah al-Budair',
-      14: 'Ali al-Hudhaifi',
-      15: 'Abdullah al-Matrood',
+      7: 'Mishari Al-Afasy',
+      3: 'Abdurrahman As-Sudais',
+      4: 'Abu Bakr Ash-Shatri',
+      5: 'Hani Ar-Rifai',
+      2: 'Abdul Basit (Murattal)',
+      1: 'Abdul Basit (Mujawwad)',
+      8: "Sa'ud Ash-Shuraym",
+      9: 'Yasser Ad-Dussary',
+      12: 'Maher Al-Mu\'ayqili',
+      13: 'Salah Al-Budair',
+      14: 'Ali Al-Hudhaifi',
+      15: 'Abdullah Al-Matrood',
+      19: 'Husary',
+      37: 'Muhammad Ayyoub',
+      16: 'Ghamadi',
     };
   }
 
   static String getQariPath(int id) {
     switch (id) {
-      case 7:
-        return 'Alafasy';
-      case 3:
-        return 'sudais';
-      case 4:
-        return 'shatri';
-      case 5:
-        return 'rifai';
-      case 2:
-        return 'abdul_baset';
-      case 1:
-        return 'abdul_baset_mujawwad';
-      case 8:
-        return 'shuraym';
-      case 9:
-        return 'dussary';
-      case 10:
-        return 'luhaidan';
-      case 12:
-        return 'muqayli';
-      case 13:
-        return 'budair';
-      case 14:
-        return 'hudhaifi';
-      case 15:
-        return 'matrood';
-      default:
-        return 'Alafasy';
+      case 7:  return 'Alafasy_128kbps';
+      case 3:  return 'Abdurrahmaan_As-Sudais_192kbps';
+      case 4:  return 'Abu_Bakr_Ash-Shaatree_128kbps';
+      case 5:  return 'Hani_Rifai_192kbps';
+      case 2:  return 'Abdul_Basit_Murattal_192kbps';
+      case 1:  return 'Abdul_Basit_Mujawwad_128kbps';
+      case 8:  return 'Saood_ash-Shuraym_128kbps';
+      case 9:  return 'Yasser_Ad-Dussary_128kbps';
+      case 12: return 'Maher_AlMuaiqly_128kbps';
+      case 13: return 'Salah_Al_Budair_128kbps';
+      case 14: return 'Hudhaify_128kbps';
+      case 15: return 'Abdullah_Matroud_128kbps';
+      case 19: return 'Husary_128kbps';
+      case 37: return 'Muhammad_Ayyoub_128kbps';
+      case 16: return 'Ghamadi_40kbps';
+      default: return 'Alafasy_128kbps';
     }
   }
 
@@ -91,7 +81,7 @@ class SettingsService {
     final path = getQariPath(qariId);
     final s = surahNum.toString().padLeft(3, '0');
     final a = ayahNum.toString().padLeft(3, '0');
-    return 'https://verses.quran.com/$path/mp3/$s$a.mp3';
+    return 'https://everyayah.com/data/$path/$s$a.mp3';
   }
 
   static String sampleUrl(int qariId) {
